@@ -1,24 +1,38 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>game-verse-creator-guide</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <title>Bubble Pop Blast - Facebook Instant Game</title>
+    <meta name="description" content="A colorful bubble shooter game with exciting levels and power-ups!" />
+    <meta name="author" content="Bubble Pop Blast" />
 
-    <meta property="og:title" content="game-verse-creator-guide" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="Bubble Pop Blast - Facebook Instant Game" />
+    <meta property="og:description" content="A colorful bubble shooter game with exciting levels and power-ups!" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- Facebook Instant Games SDK -->
+    <script src="https://connect.facebook.net/en_US/fbinstant.6.2.js"></script>
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Initialize Facebook Instant Games SDK when available
+      if (typeof FBInstant !== 'undefined') {
+        FBInstant.initializeAsync().then(function() {
+          console.log('Facebook Instant Games SDK initialized successfully');
+        }).catch(function(error) {
+          console.log('Facebook Instant Games SDK initialization failed:', error);
+        });
+      }
+    </script>
   </body>
 </html>
