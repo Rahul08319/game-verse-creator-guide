@@ -26,14 +26,18 @@ export const drawGame = (
   drawBackground(ctx, config);
   
   // Draw particles (behind bubbles)
-  gameState.particles.forEach(particle => {
-    drawParticle(ctx, particle);
-  });
+  if (gameState.particles) {
+    gameState.particles.forEach(particle => {
+      drawParticle(ctx, particle);
+    });
+  }
   
   // Draw bubbles
-  gameState.bubbles.forEach(bubble => {
-    drawBubble(ctx, bubble, gameState.isFrozen);
-  });
+  if (gameState.bubbles) {
+    gameState.bubbles.forEach(bubble => {
+      drawBubble(ctx, bubble, gameState.isFrozen ?? false);
+    });
+  }
   
   // Draw current bubble
   if (gameState.currentBubble) {
@@ -68,9 +72,11 @@ export const drawGame = (
   }
   
   // Draw combo texts
-  gameState.comboTexts.forEach(comboText => {
-    drawComboText(ctx, comboText);
-  });
+  if (gameState.comboTexts) {
+    gameState.comboTexts.forEach(comboText => {
+      drawComboText(ctx, comboText);
+    });
+  }
   
   // Draw freeze overlay
   if (gameState.isFrozen) {
