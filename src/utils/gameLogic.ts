@@ -187,11 +187,11 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
   
   // Calculate trajectory
   const speed = 8;
-  const trajectory = simulateTrajectory(shootingBubble.position, shootAngle, speed, newBubbles);
+  const { trajectory, hitBubble, hitTop } = simulateTrajectory(shootingBubble.position, shootAngle, speed, newBubbles);
   
-  if (trajectory.length > 0) {
-    const finalPosition = trajectory[trajectory.length - 1];
-    const attachPosition = findAttachPosition(finalPosition, newBubbles);
+  if (trajectory.length > 0 || hitBubble || hitTop) {
+    const finalPosition = trajectory.length > 0 ? trajectory[trajectory.length - 1] : shootingBubble.position;
+    const attachPosition = findAttachPosition(finalPosition, newBubbles, hitBubble);
     
     if (attachPosition) {
       shootingBubble.position = attachPosition.position;
@@ -335,12 +335,14 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
   };
 };
 
-const simulateTrajectory = (start: Position, angle: number, speed: number, obstacles: Bubble[]): Position[] => {
+const simulateTrajectory = (start: Position, angle: number, speed: number, obstacles: Bubble[]): { trajectory: Position[], hitBubble: Bubble | null, hitTop: boolean } => {
   const trajectory: Position[] = [];
   let pos = { ...start };
   const velocity = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
+  let hitBubble: Bubble | null = null;
+  let hitTop = false;
   
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 150; i++) {
     pos.x += velocity.x;
     pos.y += velocity.y;
     
@@ -354,50 +356,107 @@ const simulateTrajectory = (start: Position, angle: number, speed: number, obsta
     const collision = obstacles.find(bubble => {
       const dx = pos.x - bubble.position.x;
       const dy = pos.y - bubble.position.y;
-      return Math.sqrt(dx * dx + dy * dy) <= GAME_CONFIG.bubbleRadius * 2;
+      return Math.sqrt(dx * dx + dy * dy) <= GAME_CONFIG.bubbleRadius * 1.9;
     });
     
-    if (collision || pos.y <= GAME_CONFIG.bubbleRadius) {
+    if (collision) {
+      hitBubble = collision;
+      break;
+    }
+    
+    // Hit top of screen
+    if (pos.y <= GAME_CONFIG.bubbleRadius + 30) {
+      hitTop = true;
       break;
     }
     
     trajectory.push({ ...pos });
   }
   
-  return trajectory;
+  return { trajectory, hitBubble, hitTop };
 };
 
-const findAttachPosition = (position: Position, bubbles: Bubble[]): { position: Position; row: number; col: number } | null => {
+const findAttachPosition = (position: Position, bubbles: Bubble[], hitBubble: Bubble | null): { position: Position; row: number; col: number } | null => {
   const { bubbleRadius, canvasWidth } = GAME_CONFIG;
   
-  // Find the topmost row that has bubbles
-  const maxRow = Math.max(-1, ...bubbles.map(b => b.row));
-  const targetRow = maxRow + 1;
+  if (hitBubble) {
+    // Find an empty adjacent cell near the hit bubble
+    const { row: hitRow, col: hitCol } = hitBubble;
+    
+    // Get possible neighbor positions based on hit bubble's row parity
+    const offsets = hitRow % 2 === 0 ? [
+      [-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]
+    ] : [
+      [-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]
+    ];
+    
+    // Find the closest empty position
+    let bestPos: { row: number; col: number; dist: number } | null = null;
+    
+    for (const [dr, dc] of offsets) {
+      const newRow = hitRow + dr;
+      const newCol = hitCol + dc;
+      
+      // Check if position is valid
+      const colsInRow = GAME_CONFIG.maxCols - (newRow % 2);
+      if (newCol < 0 || newCol >= colsInRow || newRow < 0) continue;
+      
+      // Check if position is empty
+      const occupied = bubbles.some(b => b.row === newRow && b.col === newCol);
+      if (occupied) continue;
+      
+      // Calculate position
+      const startX = (canvasWidth - (colsInRow * bubbleRadius * 2)) / 2 + bubbleRadius;
+      const posX = startX + newCol * bubbleRadius * 2 + (newRow % 2) * bubbleRadius;
+      const posY = 50 + newRow * bubbleRadius * 1.8;
+      
+      const dist = Math.sqrt(Math.pow(position.x - posX, 2) + Math.pow(position.y - posY, 2));
+      
+      if (!bestPos || dist < bestPos.dist) {
+        bestPos = { row: newRow, col: newCol, dist };
+      }
+    }
+    
+    if (bestPos) {
+      const colsInRow = GAME_CONFIG.maxCols - (bestPos.row % 2);
+      const startX = (canvasWidth - (colsInRow * bubbleRadius * 2)) / 2 + bubbleRadius;
+      const finalX = startX + bestPos.col * bubbleRadius * 2 + (bestPos.row % 2) * bubbleRadius;
+      const finalY = 50 + bestPos.row * bubbleRadius * 1.8;
+      
+      return {
+        position: { x: finalX, y: finalY },
+        row: bestPos.row,
+        col: bestPos.col
+      };
+    }
+  }
   
-  // Calculate grid position
-  const colsInRow = GAME_CONFIG.maxCols - (targetRow % 2);
+  // Fallback: attach to top row based on x position
+  const row = 0;
+  const colsInRow = GAME_CONFIG.maxCols - (row % 2);
   const startX = (canvasWidth - (colsInRow * bubbleRadius * 2)) / 2 + bubbleRadius;
   
-  // Find closest column
   let bestCol = 0;
   let minDistance = Infinity;
   
   for (let col = 0; col < colsInRow; col++) {
-    const gridX = startX + col * bubbleRadius * 2 + (targetRow % 2) * bubbleRadius;
-    const distance = Math.abs(position.x - gridX);
+    const gridX = startX + col * bubbleRadius * 2;
+    const occupied = bubbles.some(b => b.row === row && b.col === col);
+    if (occupied) continue;
     
+    const distance = Math.abs(position.x - gridX);
     if (distance < minDistance) {
       minDistance = distance;
       bestCol = col;
     }
   }
   
-  const finalX = startX + bestCol * bubbleRadius * 2 + (targetRow % 2) * bubbleRadius;
-  const finalY = 50 + targetRow * bubbleRadius * 1.8;
+  const finalX = startX + bestCol * bubbleRadius * 2;
+  const finalY = 50 + row * bubbleRadius * 1.8;
   
   return {
     position: { x: finalX, y: finalY },
-    row: targetRow,
+    row,
     col: bestCol
   };
 };
