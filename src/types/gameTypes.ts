@@ -50,6 +50,8 @@ export interface GameState {
   particles: Particle[];
   comboTexts: ComboText[];
   combo: number;
+  soundEvent?: string;
+  levelComplete?: boolean;
 }
 
 export interface GameConfig {
