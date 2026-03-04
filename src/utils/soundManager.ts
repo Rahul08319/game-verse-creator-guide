@@ -1,5 +1,10 @@
 
 let audioContext: AudioContext | null = null;
+let isMuted = false;
+let bgMusicGain: GainNode | null = null;
+let bgMusicPlaying = false;
+let bgOscillators: OscillatorNode[] = [];
+let bgTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const getAudioContext = (): AudioContext => {
   if (!audioContext) {
@@ -12,29 +17,25 @@ const getAudioContext = (): AudioContext => {
 };
 
 const playTone = (frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.3, detune: number = 0) => {
+  if (isMuted) return;
   try {
     const ctx = getAudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.type = type;
     osc.frequency.setValueAtTime(frequency, ctx.currentTime);
     osc.detune.setValueAtTime(detune, ctx.currentTime);
-
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
-  } catch (e) {
-    // Ignore audio errors
-  }
+  } catch (e) {}
 };
 
 const playNoise = (duration: number, volume: number = 0.1) => {
+  if (isMuted) return;
   try {
     const ctx = getAudioContext();
     const bufferSize = ctx.sampleRate * duration;
@@ -54,74 +55,140 @@ const playNoise = (duration: number, volume: number = 0.1) => {
   } catch (e) {}
 };
 
+// Background music - looping ambient melody
+const BG_MELODY = [
+  { freq: 220, dur: 0.8 }, { freq: 261, dur: 0.8 }, { freq: 293, dur: 0.8 }, { freq: 329, dur: 0.8 },
+  { freq: 349, dur: 0.8 }, { freq: 329, dur: 0.8 }, { freq: 293, dur: 0.8 }, { freq: 261, dur: 0.8 },
+  { freq: 246, dur: 0.8 }, { freq: 293, dur: 0.8 }, { freq: 329, dur: 0.8 }, { freq: 349, dur: 0.8 },
+  { freq: 392, dur: 0.8 }, { freq: 349, dur: 0.8 }, { freq: 329, dur: 0.8 }, { freq: 293, dur: 0.8 },
+];
+
+const playBgLoop = () => {
+  if (!bgMusicPlaying || isMuted) return;
+  try {
+    const ctx = getAudioContext();
+    let time = ctx.currentTime;
+
+    BG_MELODY.forEach((note) => {
+      // Pad
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(note.freq, time);
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(0.04, time + 0.1);
+      gain.gain.setValueAtTime(0.04, time + note.dur - 0.15);
+      gain.gain.linearRampToValueAtTime(0, time + note.dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(time);
+      osc.stop(time + note.dur);
+      bgOscillators.push(osc);
+
+      // Harmony (fifth above, quieter)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(note.freq * 1.5, time);
+      gain2.gain.setValueAtTime(0, time);
+      gain2.gain.linearRampToValueAtTime(0.015, time + 0.15);
+      gain2.gain.setValueAtTime(0.015, time + note.dur - 0.15);
+      gain2.gain.linearRampToValueAtTime(0, time + note.dur);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(time);
+      osc2.stop(time + note.dur);
+      bgOscillators.push(osc2);
+
+      time += note.dur;
+    });
+
+    const loopDuration = BG_MELODY.reduce((sum, n) => sum + n.dur, 0) * 1000;
+    bgTimeout = setTimeout(playBgLoop, loopDuration - 50);
+  } catch (e) {}
+};
+
+const startBgMusic = () => {
+  if (bgMusicPlaying) return;
+  bgMusicPlaying = true;
+  playBgLoop();
+};
+
+const stopBgMusic = () => {
+  bgMusicPlaying = false;
+  if (bgTimeout) { clearTimeout(bgTimeout); bgTimeout = null; }
+  bgOscillators = [];
+};
+
 export const SoundManager = {
   pop: () => {
     const freq = 400 + Math.random() * 200;
     playTone(freq, 0.15, 'sine', 0.25);
     playTone(freq * 1.5, 0.1, 'sine', 0.1);
   },
-
   multiPop: (count: number) => {
     for (let i = 0; i < Math.min(count, 6); i++) {
-      setTimeout(() => {
-        playTone(500 + i * 80, 0.12, 'sine', 0.2);
-      }, i * 40);
+      setTimeout(() => playTone(500 + i * 80, 0.12, 'sine', 0.2), i * 40);
     }
   },
-
   shoot: () => {
     playTone(200, 0.08, 'triangle', 0.15);
     playTone(300, 0.06, 'sine', 0.1);
   },
-
   bomb: () => {
     playNoise(0.4, 0.3);
     playTone(80, 0.5, 'sawtooth', 0.2);
     playTone(60, 0.6, 'sine', 0.15);
   },
-
   freeze: () => {
     playTone(1200, 0.3, 'sine', 0.2);
     playTone(1600, 0.4, 'sine', 0.15);
     playTone(2000, 0.3, 'sine', 0.1);
   },
-
   rainbow: () => {
     const notes = [523, 659, 784, 1047];
     notes.forEach((freq, i) => {
       setTimeout(() => playTone(freq, 0.15, 'sine', 0.15), i * 60);
     });
   },
-
   combo: (level: number) => {
     const baseFreq = 400 + level * 100;
     for (let i = 0; i < Math.min(level + 1, 5); i++) {
       setTimeout(() => {
         playTone(baseFreq + i * 150, 0.2, 'sine', 0.2);
-        playTone(baseFreq + i * 150 + 5, 0.2, 'sine', 0.1); // slight detune for richness
+        playTone(baseFreq + i * 150 + 5, 0.2, 'sine', 0.1);
       }, i * 80);
     }
   },
-
   levelUp: () => {
     const melody = [523, 659, 784, 1047, 1319];
     melody.forEach((freq, i) => {
       setTimeout(() => playTone(freq, 0.25, 'sine', 0.25), i * 100);
     });
   },
-
   gameOver: () => {
     const notes = [400, 350, 300, 250];
     notes.forEach((freq, i) => {
       setTimeout(() => playTone(freq, 0.4, 'sawtooth', 0.15), i * 200);
     });
   },
-
   attach: () => {
     playTone(350, 0.06, 'square', 0.08);
   },
-
   init: () => {
     getAudioContext();
-  }
+    startBgMusic();
+  },
+  toggleMute: (): boolean => {
+    isMuted = !isMuted;
+    if (isMuted) {
+      stopBgMusic();
+    } else {
+      startBgMusic();
+    }
+    return isMuted;
+  },
+  isMuted: () => isMuted,
+  startMusic: () => startBgMusic(),
+  stopMusic: () => stopBgMusic(),
 };
