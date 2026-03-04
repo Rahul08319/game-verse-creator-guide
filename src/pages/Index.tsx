@@ -5,11 +5,17 @@ import GameUI from '../components/GameUI';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
+import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [highScores, setHighScores] = useState<HighScore[]>(() => getHighScores());
+  const [playerName, setPlayerName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [aimAngle, setAimAngle] = useState(-Math.PI / 2);
@@ -17,12 +23,10 @@ const Index = () => {
 
   // Detect orientation
   useEffect(() => {
-    const checkOrientation = () => {
-      setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
-    };
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    return () => window.removeEventListener('resize', checkOrientation);
+    const check = () => setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   // Init audio on first interaction
@@ -40,17 +44,13 @@ const Index = () => {
     };
   }, []);
 
-  // Game loop for particles and freeze timer
+  // Game loop
   useEffect(() => {
     const gameLoop = () => {
       setGameState(prev => {
         let newState = { ...prev };
-        if (prev.particles && prev.particles.length > 0) {
-          newState.particles = updateParticles(prev.particles);
-        }
-        if (prev.comboTexts && prev.comboTexts.length > 0) {
-          newState.comboTexts = updateComboTexts(prev.comboTexts);
-        }
+        if (prev.particles && prev.particles.length > 0) newState.particles = updateParticles(prev.particles);
+        if (prev.comboTexts && prev.comboTexts.length > 0) newState.comboTexts = updateComboTexts(prev.comboTexts);
         if (prev.isFrozen && prev.frozenTimer > 0) {
           newState.frozenTimer = prev.frozenTimer - 1;
           if (newState.frozenTimer <= 0) newState.isFrozen = false;
@@ -65,11 +65,9 @@ const Index = () => {
 
   const handleShoot = useCallback((angle: number) => {
     if (gameState.isGameOver || gameState.isPaused || !gameState.currentBubble) return;
-
     SoundManager.shoot();
     const newState = updateGameState(gameState, angle);
 
-    // Play sound effects based on event
     if (newState.soundEvent) {
       const evt = newState.soundEvent;
       if (evt === 'bomb') SoundManager.bomb();
@@ -83,34 +81,48 @@ const Index = () => {
       } else if (evt === 'attach') SoundManager.attach();
     }
 
-    // Check level complete
     if (newState.levelComplete) {
       SoundManager.levelUp();
       setShowLevelUp(true);
       setGameState(newState);
       setTimeout(() => {
         setShowLevelUp(false);
-        const nextLevel = newState.level + 1;
-        setGameState(initializeGame(nextLevel, newState.score));
+        setGameState(initializeGame(newState.level + 1, newState.score));
       }, 2000);
       return;
     }
 
     setGameState(newState);
-
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
       setGameState(prev => ({ ...prev, isGameOver: true }));
+      if (isHighScore(newState.score)) {
+        setShowNameInput(true);
+      }
     }
   }, [gameState]);
 
   const handleRestart = () => {
     setGameState(initializeGame());
     setShowLevelUp(false);
+    setShowNameInput(false);
   };
 
   const handlePause = () => {
     setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }));
+  };
+
+  const handleToggleMute = () => {
+    const muted = SoundManager.toggleMute();
+    setIsMuted(muted);
+  };
+
+  const handleSaveScore = () => {
+    const name = playerName.trim() || 'Player';
+    const updated = saveHighScore(gameState.score, gameState.level, name);
+    setHighScores(updated);
+    setShowNameInput(false);
+    setPlayerName('');
   };
 
   const isLandscape = orientation === 'landscape';
@@ -118,7 +130,7 @@ const Index = () => {
   const progress = Math.min(100, Math.floor((gameState.score / targetScore) * 100));
 
   return (
-    <div className={`min-h-screen bg-[#0a0a1a] flex items-center justify-center p-2 sm:p-4 overflow-hidden ${isLandscape ? 'flex-row' : 'flex-col'}`}>
+    <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center p-2 overflow-hidden">
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse" />
@@ -126,55 +138,58 @@ const Index = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div className={`relative bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 ${
-        isLandscape 
-          ? 'flex flex-row p-4 gap-4 max-h-[95vh] aspect-video max-w-[95vw]'
-          : 'flex flex-col p-4 sm:p-6 max-w-md w-full aspect-[9/16] max-h-[95vh]'
+      {/* Main game container - always 16:9 in landscape, 9:16 in portrait */}
+      <div className={`relative bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden ${
+        isLandscape
+          ? 'flex flex-row w-[min(95vw,95vh*16/9)] h-[min(95vh,95vw*9/16)] p-3 gap-3'
+          : 'flex flex-col w-[min(95vw,95vh*9/16)] h-[min(95vh,95vw*16/9)] p-3'
       }`}>
-        {/* Neon border glow */}
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 blur-xl -z-10" />
 
-        {/* Side panel in landscape / top panel in portrait */}
-        <div className={`flex flex-col ${isLandscape ? 'w-48 justify-between shrink-0' : ''}`}>
-          <GameUI
-            gameState={gameState}
-            onRestart={handleRestart}
-            onPause={handlePause}
-          />
+        {/* Side/Top panel */}
+        <div className={`flex flex-col ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
+          <GameUI gameState={gameState} onRestart={handleRestart} onPause={handlePause} />
 
-          {/* Level progress bar */}
-          <div className={`${isLandscape ? 'mt-4' : 'mt-2'}`}>
+          {/* Level progress */}
+          <div className="mt-2">
             <div className="flex justify-between text-xs mb-1">
               <span className="text-purple-400 font-bold">Level {gameState.level}</span>
               <span className="text-gray-400">{progress}%</span>
             </div>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-pink-500 to-cyan-500 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="h-full bg-gradient-to-r from-pink-500 to-cyan-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
-            <div className="text-[10px] text-gray-500 mt-1 text-center">
-              Target: {targetScore.toLocaleString()}
-            </div>
+            <div className="text-[10px] text-gray-500 mt-1 text-center">Target: {targetScore.toLocaleString()}</div>
           </div>
 
-          {/* Power-up legend */}
-          <div className={`flex gap-3 text-xs ${isLandscape ? 'flex-col mt-4' : 'justify-center mt-2'}`}>
-            <div className="flex items-center gap-1 text-orange-400">
-              <span>💣</span> Bomb
+          {/* Controls row */}
+          <div className="flex items-center justify-between mt-2 gap-2">
+            <div className="flex gap-2 text-[10px]">
+              <span className="text-orange-400">💣</span>
+              <span className="text-cyan-400">❄️</span>
+              <span>🌈</span>
             </div>
-            <div className="flex items-center gap-1 text-cyan-400">
-              <span>❄️</span> Freeze
-            </div>
-            <div className="flex items-center gap-1 text-white">
-              <span>🌈</span> Rainbow
+            <div className="flex gap-1">
+              <button
+                onClick={handleToggleMute}
+                className="w-8 h-8 flex items-center justify-center bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10"
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted ? '🔇' : '🔊'}
+              </button>
+              <button
+                onClick={() => { setShowLeaderboard(!showLeaderboard); setHighScores(getHighScores()); }}
+                className="w-8 h-8 flex items-center justify-center bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10"
+                title="Leaderboard"
+              >
+                🏆
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Game canvas */}
-        <div className={`relative flex justify-center items-center ${isLandscape ? 'flex-1' : 'mt-2 flex-1'}`}>
+        {/* Game canvas area */}
+        <div className={`relative flex justify-center items-center ${isLandscape ? 'flex-1' : 'flex-1 mt-1'}`}>
           <GameCanvas
             ref={canvasRef}
             gameState={gameState}
@@ -185,13 +200,41 @@ const Index = () => {
           />
         </div>
 
+        {/* Leaderboard overlay */}
+        {showLeaderboard && (
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm rounded-3xl flex items-center justify-center z-20 animate-fade-in">
+            <div className="bg-gradient-to-br from-[#1a0a2e]/95 to-[#0a1a2e]/95 rounded-2xl p-6 w-72 max-h-[80%] overflow-auto border border-purple-500/30 shadow-xl">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">🏆 High Scores</h2>
+                <button onClick={() => setShowLeaderboard(false)} className="text-gray-400 hover:text-white text-lg">✕</button>
+              </div>
+              {highScores.length === 0 ? (
+                <p className="text-gray-500 text-center text-sm py-4">No scores yet. Play a game!</p>
+              ) : (
+                <div className="space-y-2">
+                  {highScores.map((hs, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-2 rounded-lg ${i === 0 ? 'bg-yellow-500/10 border border-yellow-500/20' : i === 1 ? 'bg-gray-300/5 border border-gray-400/10' : i === 2 ? 'bg-orange-500/5 border border-orange-500/10' : 'bg-white/5'}`}>
+                      <span className={`text-lg font-bold w-6 text-center ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-500'}`}>
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white text-sm font-semibold truncate">{hs.name}</div>
+                        <div className="text-gray-500 text-[10px]">Lvl {hs.level} · {hs.date}</div>
+                      </div>
+                      <span className="text-cyan-400 font-bold text-sm">{hs.score.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Level Up overlay */}
         {showLevelUp && (
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-20">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-20 animate-scale-in">
             <div className="text-center animate-bounce">
-              <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 mb-2">
-                LEVEL UP!
-              </h2>
+              <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 mb-2">LEVEL UP!</h2>
               <p className="text-xl text-yellow-300">Level {gameState.level + 1}</p>
               <p className="text-sm text-gray-400 mt-2">Get ready...</p>
             </div>
@@ -200,13 +243,34 @@ const Index = () => {
 
         {/* Game Over overlay */}
         {gameState.isGameOver && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
-            <div className="bg-gradient-to-br from-purple-900/90 to-pink-900/90 rounded-2xl p-8 text-center shadow-xl border border-pink-500/30">
-              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 mb-4">
-                Game Over!
-              </h2>
-              <p className="text-2xl text-white mb-2">Score: {gameState.score}</p>
-              <p className="text-lg text-gray-400 mb-6">Level: {gameState.level}</p>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10 animate-fade-in">
+            <div className="bg-gradient-to-br from-purple-900/90 to-pink-900/90 rounded-2xl p-6 text-center shadow-xl border border-pink-500/30 w-72">
+              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 mb-3">Game Over!</h2>
+              <p className="text-2xl text-white mb-1">{gameState.score.toLocaleString()}</p>
+              <p className="text-sm text-gray-400 mb-4">Level {gameState.level}</p>
+
+              {showNameInput && (
+                <div className="mb-4 space-y-2">
+                  <p className="text-yellow-400 text-sm font-bold">🏆 New High Score!</p>
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={e => setPlayerName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveScore()}
+                    placeholder="Your name"
+                    maxLength={12}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-center text-sm outline-none focus:border-cyan-400 transition-colors"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveScore}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:scale-105 transition-transform"
+                  >
+                    Save Score
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={handleRestart}
                 className="bg-gradient-to-r from-pink-500 to-cyan-500 text-white px-8 py-3 rounded-full font-semibold hover:scale-105 transform transition-all duration-200 shadow-lg shadow-pink-500/25"
