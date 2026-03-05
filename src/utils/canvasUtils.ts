@@ -41,6 +41,8 @@ export const drawGame = (
   
   // Draw current bubble
   if (gameState.currentBubble) {
+    // Draw trail particles behind the current bubble
+    drawShooterTrail(ctx, gameState.currentBubble);
     drawBubble(ctx, gameState.currentBubble, false);
     
     // Draw aim line
