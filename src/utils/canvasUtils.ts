@@ -41,6 +41,8 @@ export const drawGame = (
   
   // Draw current bubble
   if (gameState.currentBubble) {
+    // Draw trail particles behind the current bubble
+    drawShooterTrail(ctx, gameState.currentBubble);
     drawBubble(ctx, gameState.currentBubble, false);
     
     // Draw aim line
@@ -380,6 +382,66 @@ const drawAimLine = (
   ctx.lineTo(endX, endY + 10);
   ctx.stroke();
   
+  ctx.restore();
+};
+
+// Animated trail behind shooter bubble
+const trailPositions: { x: number; y: number; alpha: number; radius: number; color: string }[] = [];
+let trailFrame = 0;
+
+const drawShooterTrail = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
+  trailFrame++;
+  const { x, y } = bubble.position;
+  const color = bubble.color;
+
+  // Add new trail dot every 2 frames
+  if (trailFrame % 2 === 0) {
+    trailPositions.push({
+      x: x + (Math.random() - 0.5) * 8,
+      y: y + (Math.random() - 0.5) * 8,
+      alpha: 0.7,
+      radius: 3 + Math.random() * 3,
+      color
+    });
+  }
+
+  // Update and draw trail
+  for (let i = trailPositions.length - 1; i >= 0; i--) {
+    const t = trailPositions[i];
+    t.alpha -= 0.025;
+    t.radius *= 0.97;
+    t.y += 0.3;
+
+    if (t.alpha <= 0) {
+      trailPositions.splice(i, 1);
+      continue;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = t.alpha;
+    ctx.shadowColor = t.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Keep trail array bounded
+  while (trailPositions.length > 30) trailPositions.shift();
+
+  // Glow ring around current bubble
+  ctx.save();
+  const pulseSize = 2 + Math.sin(Date.now() * 0.006) * 2;
+  ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.006) * 0.15;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  ctx.arc(x, y, bubble.radius + pulseSize, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
   ctx.restore();
 };
 
