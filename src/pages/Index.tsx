@@ -6,6 +6,7 @@ import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
 import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
+import { YouTubePlayables } from '../utils/youtubePlayables';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
@@ -16,10 +17,43 @@ const Index = () => {
   const [highScores, setHighScores] = useState<HighScore[]>(() => getHighScores());
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+  const [screenShake, setScreenShake] = useState({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [aimAngle, setAimAngle] = useState(-Math.PI / 2);
   const gameLoopRef = useRef<number>();
+  const shakeRef = useRef<number>();
+
+  // Screen shake function
+  const triggerScreenShake = useCallback((intensity: number = 8, duration: number = 300) => {
+    const startTime = Date.now();
+    const shake = () => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed > duration) {
+        setScreenShake({ x: 0, y: 0 });
+        return;
+      }
+      const decay = 1 - elapsed / duration;
+      const x = (Math.random() - 0.5) * 2 * intensity * decay;
+      const y = (Math.random() - 0.5) * 2 * intensity * decay;
+      setScreenShake({ x, y });
+      shakeRef.current = requestAnimationFrame(shake);
+    };
+    shake();
+  }, []);
+
+  // Init YouTube Playables SDK
+  useEffect(() => {
+    YouTubePlayables.init({
+      onPause: () => setGameState(prev => ({ ...prev, isPaused: true })),
+      onResume: () => setGameState(prev => ({ ...prev, isPaused: false })),
+    });
+    // Signal first frame after mount
+    setTimeout(() => {
+      YouTubePlayables.firstFrameReady();
+      YouTubePlayables.gameReady();
+    }, 500);
+  }, []);
 
   // Detect orientation
   useEffect(() => {
@@ -60,7 +94,10 @@ const Index = () => {
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     };
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-    return () => { if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current); };
+    return () => {
+      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+      if (shakeRef.current) cancelAnimationFrame(shakeRef.current);
+    };
   }, []);
 
   const handleShoot = useCallback((angle: number) => {
@@ -70,7 +107,10 @@ const Index = () => {
 
     if (newState.soundEvent) {
       const evt = newState.soundEvent;
-      if (evt === 'bomb') SoundManager.bomb();
+      if (evt === 'bomb') {
+        SoundManager.bomb();
+        triggerScreenShake(12, 400); // Strong shake for bombs!
+      }
       else if (evt === 'freeze') SoundManager.freeze();
       else if (evt === 'rainbow') SoundManager.rainbow();
       else if (evt === 'pop') SoundManager.multiPop(3);
@@ -78,11 +118,13 @@ const Index = () => {
         const comboLevel = parseInt(evt.split('-')[1]);
         SoundManager.combo(comboLevel);
         SoundManager.multiPop(comboLevel + 2);
+        if (comboLevel >= 3) triggerScreenShake(4, 200); // Light shake for big combos
       } else if (evt === 'attach') SoundManager.attach();
     }
 
     if (newState.levelComplete) {
       SoundManager.levelUp();
+      YouTubePlayables.sendScore(newState.score);
       setShowLevelUp(true);
       setGameState(newState);
       setTimeout(() => {
@@ -95,12 +137,13 @@ const Index = () => {
     setGameState(newState);
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
+      YouTubePlayables.sendScore(newState.score);
       setGameState(prev => ({ ...prev, isGameOver: true }));
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
       }
     }
-  }, [gameState]);
+  }, [gameState, triggerScreenShake]);
 
   const handleRestart = () => {
     setGameState(initializeGame());
@@ -138,7 +181,7 @@ const Index = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Main game container - always 16:9 in landscape, 9:16 in portrait */}
+      {/* Main game container */}
       <div className={`relative bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden ${
         isLandscape
           ? 'flex flex-row w-[min(95vw,95vh*16/9)] h-[min(95vh,95vw*9/16)] p-3 gap-3'
@@ -194,6 +237,7 @@ const Index = () => {
             ref={canvasRef}
             gameState={gameState}
             aimAngle={aimAngle}
+            screenShake={screenShake}
             onShoot={handleShoot}
             onAimChange={setAimAngle}
             onAimingChange={() => {}}
