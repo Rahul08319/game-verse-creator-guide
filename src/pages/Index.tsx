@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
+import TutorialOverlay from '../components/TutorialOverlay';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -18,6 +19,9 @@ const Index = () => {
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
   const [screenShake, setScreenShake] = useState({ x: 0, y: 0 });
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem('bubble-pop-tutorial-seen');
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [aimAngle, setAimAngle] = useState(-Math.PI / 2);
@@ -283,6 +287,14 @@ const Index = () => {
               <p className="text-sm text-gray-400 mt-2">Get ready...</p>
             </div>
           </div>
+        )}
+
+        {/* Tutorial overlay */}
+        {showTutorial && (
+          <TutorialOverlay onDismiss={() => {
+            setShowTutorial(false);
+            localStorage.setItem('bubble-pop-tutorial-seen', 'true');
+          }} />
         )}
 
         {/* Game Over overlay */}
