@@ -6,6 +6,7 @@ import { drawGame, getCanvasConfig } from '../utils/canvasUtils';
 interface GameCanvasProps {
   gameState: GameState;
   aimAngle: number;
+  screenShake: { x: number; y: number };
   onShoot: (angle: number) => void;
   onAimChange: (angle: number) => void;
   onAimingChange: (isAiming: boolean) => void;
@@ -14,6 +15,7 @@ interface GameCanvasProps {
 const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
   gameState,
   aimAngle,
+  screenShake,
   onShoot,
   onAimChange,
   onAimingChange
@@ -35,7 +37,10 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
     canvas.height = config.canvasHeight;
 
     const animate = () => {
+      ctx.save();
+      ctx.translate(screenShake.x, screenShake.y);
       drawGame(ctx, gameState, aimAngle, config);
+      ctx.restore();
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -46,7 +51,7 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, aimAngle]);
+  }, [gameState, aimAngle, screenShake]);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (gameState.isGameOver || gameState.isPaused) return;
