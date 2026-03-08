@@ -249,7 +249,6 @@ const Index = () => {
     setShowNameInput(false);
   };
 
-  const [rematchLoading, setRematchLoading] = useState(false);
   const handleRematch = useCallback(async () => {
     if (!mpSession) return;
     setRematchLoading(true);
