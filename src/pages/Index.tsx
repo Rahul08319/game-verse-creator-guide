@@ -17,7 +17,7 @@ import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/h
 import { saveDailyResult } from '../utils/dailyChallenge';
 import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
-import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers } from '../utils/multiplayer';
+import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
@@ -248,6 +248,18 @@ const Index = () => {
     setShowNameInput(false);
   };
 
+  const [rematchLoading, setRematchLoading] = useState(false);
+  const handleRematch = useCallback(async () => {
+    if (!mpSession) return;
+    setRematchLoading(true);
+    const newSeed = await resetSessionForRematch(mpSession.sessionId);
+    setRematchLoading(false);
+    if (newSeed === null) return;
+    setShowMpResults(false);
+    setGameState(initializeGame(1, 0, false));
+    setMpTimeLeft(MATCH_DURATION);
+  }, [mpSession]);
+
   const handleStartMultiplayer = useCallback((session: MultiplayerSession) => {
     setMpSession(session);
     setShowMultiplayer(false);
@@ -469,7 +481,7 @@ const Index = () => {
 
         {/* Multiplayer Results overlay */}
         {showMpResults && mpPlayers.length > 0 && (
-          <MultiplayerResults players={mpPlayers} onClose={handleRestart} />
+          <MultiplayerResults players={mpPlayers} onClose={handleRestart} onRematch={handleRematch} rematchLoading={rematchLoading} />
         )}
 
         {/* Game Over overlay (non-multiplayer) */}
