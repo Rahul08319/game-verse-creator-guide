@@ -1,4 +1,5 @@
 import { GameState, Bubble, Position, GameConfig, Particle, ComboText, PowerUpType } from '../types/gameTypes';
+import type { GameSettings } from '../components/SettingsOverlay';
 
 const GAME_CONFIG: GameConfig = {
   canvasWidth: 350,
@@ -40,6 +41,17 @@ const getLevelDef = (level: number): LevelDef => {
 };
 
 export const getTargetScore = (level: number): number => getLevelDef(level).targetScore;
+
+// Difficulty modifiers
+const DIFFICULTY_MODS = {
+  easy: { colorReduction: 1, powerUpBoost: 0.04, rowReduction: 1 },
+  normal: { colorReduction: 0, powerUpBoost: 0, rowReduction: 0 },
+  hard: { colorReduction: -1, powerUpBoost: -0.02, rowReduction: -1 },
+};
+
+let currentDifficulty: 'easy' | 'normal' | 'hard' = 'normal';
+
+export const setDifficulty = (d: 'easy' | 'normal' | 'hard') => { currentDifficulty = d; };
 
 export const initializeGame = (level: number = 1, carryScore: number = 0): GameState => {
   const bubbles = generateLevelBubbles(level);
@@ -369,12 +381,16 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
   };
 };
 
+// Stores wall bounce positions for particle effects
+export let wallBouncePositions: Position[] = [];
+
 const simulateTrajectory = (start: Position, angle: number, speed: number, obstacles: Bubble[]): { trajectory: Position[], hitBubble: Bubble | null, hitTop: boolean } => {
   const trajectory: Position[] = [];
   let pos = { ...start };
   const velocity = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
   let hitBubble: Bubble | null = null;
   let hitTop = false;
+  wallBouncePositions = [];
 
   for (let i = 0; i < 150; i++) {
     pos.x += velocity.x;
@@ -383,6 +399,7 @@ const simulateTrajectory = (start: Position, angle: number, speed: number, obsta
     if (pos.x <= GAME_CONFIG.bubbleRadius || pos.x >= GAME_CONFIG.canvasWidth - GAME_CONFIG.bubbleRadius) {
       velocity.x *= -1;
       pos.x = Math.max(GAME_CONFIG.bubbleRadius, Math.min(GAME_CONFIG.canvasWidth - GAME_CONFIG.bubbleRadius, pos.x));
+      wallBouncePositions.push({ ...pos });
     }
 
     const collision = obstacles.find(bubble => {

@@ -3,8 +3,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
 import TutorialOverlay from '../components/TutorialOverlay';
+import SettingsOverlay, { GameSettings } from '../components/SettingsOverlay';
 import { GameState } from '../types/gameTypes';
-import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore } from '../utils/gameLogic';
+import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
 import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 import { YouTubePlayables } from '../utils/youtubePlayables';
@@ -21,6 +22,11 @@ const Index = () => {
   const [screenShake, setScreenShake] = useState({ x: 0, y: 0 });
   const [showTutorial, setShowTutorial] = useState(() => {
     return !localStorage.getItem('bubble-pop-tutorial-seen');
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
+    const saved = localStorage.getItem('bubble-pop-settings');
+    return saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -164,6 +170,14 @@ const Index = () => {
     setIsMuted(muted);
   };
 
+  const handleSaveSettings = (s: GameSettings) => {
+    setGameSettings(s);
+    localStorage.setItem('bubble-pop-settings', JSON.stringify(s));
+    setDifficulty(s.difficulty);
+    SoundManager.setVolume(s.volume / 100);
+    setShowSettings(false);
+  };
+
   const handleSaveScore = () => {
     const name = playerName.trim() || 'Player';
     const updated = saveHighScore(gameState.score, gameState.level, name);
@@ -230,6 +244,13 @@ const Index = () => {
                 title="Leaderboard"
               >
                 🏆
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="w-8 h-8 flex items-center justify-center bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10"
+                title="Settings"
+              >
+                ⚙️
               </button>
             </div>
           </div>
@@ -335,6 +356,15 @@ const Index = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Settings overlay */}
+        {showSettings && (
+          <SettingsOverlay
+            settings={gameSettings}
+            onSave={handleSaveSettings}
+            onClose={() => setShowSettings(false)}
+          />
         )}
       </div>
 

@@ -1,6 +1,7 @@
 
 let audioContext: AudioContext | null = null;
 let isMuted = false;
+let masterVolume = 0.8;
 let bgMusicGain: GainNode | null = null;
 let bgMusicPlaying = false;
 let bgOscillators: OscillatorNode[] = [];
@@ -18,6 +19,7 @@ const getAudioContext = (): AudioContext => {
 
 const playTone = (frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.3, detune: number = 0) => {
   if (isMuted) return;
+  const adjustedVolume = volume * masterVolume;
   try {
     const ctx = getAudioContext();
     const osc = ctx.createOscillator();
@@ -25,7 +27,7 @@ const playTone = (frequency: number, duration: number, type: OscillatorType = 's
     osc.type = type;
     osc.frequency.setValueAtTime(frequency, ctx.currentTime);
     osc.detune.setValueAtTime(detune, ctx.currentTime);
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.setValueAtTime(adjustedVolume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -191,4 +193,5 @@ export const SoundManager = {
   isMuted: () => isMuted,
   startMusic: () => startBgMusic(),
   stopMusic: () => stopBgMusic(),
+  setVolume: (v: number) => { masterVolume = Math.max(0, Math.min(1, v)); },
 };

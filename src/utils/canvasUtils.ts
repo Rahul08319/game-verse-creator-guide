@@ -1,5 +1,6 @@
 
 import { GameState, GameConfig, Bubble, Particle, ComboText } from '../types/gameTypes';
+import { wallBouncePositions } from './gameLogic';
 
 const GAME_CONFIG: GameConfig = {
   canvasWidth: 350,
@@ -96,7 +97,13 @@ export const drawGame = (
     ctx.restore();
   }
   
-  // Draw pause overlay
+  // Draw wall bounce spark effects
+  if (wallBouncePositions && wallBouncePositions.length > 0) {
+    wallBouncePositions.forEach(pos => {
+      drawWallBounceSparks(ctx, pos);
+    });
+  }
+  
   if (gameState.isPaused) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
@@ -442,6 +449,33 @@ const drawShooterTrail = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.stroke();
+  ctx.restore();
+};
+
+// Wall bounce spark effect
+const drawWallBounceSparks = (ctx: CanvasRenderingContext2D, pos: { x: number; y: number }) => {
+  const time = Date.now();
+  const sparkCount = 6;
+  const isLeftWall = pos.x < 50;
+
+  ctx.save();
+  for (let i = 0; i < sparkCount; i++) {
+    const angle = isLeftWall
+      ? -Math.PI / 4 + (Math.PI / 2) * (i / sparkCount)
+      : Math.PI / 2 + Math.PI / 4 + (Math.PI / 2) * (i / sparkCount);
+    const dist = 8 + Math.sin(time * 0.01 + i) * 5;
+    const sx = pos.x + Math.cos(angle) * dist;
+    const sy = pos.y + Math.sin(angle) * dist;
+    const alpha = 0.5 + Math.sin(time * 0.015 + i * 0.5) * 0.3;
+
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = '#FFFF00';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+    ctx.fillStyle = i % 2 === 0 ? '#FFFF00' : '#FF8800';
+    ctx.fill();
+  }
   ctx.restore();
 };
 
