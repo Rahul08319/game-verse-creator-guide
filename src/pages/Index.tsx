@@ -47,6 +47,11 @@ const Index = () => {
     return s;
   });
 
+  const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
+  const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
+
+  const MATCH_DURATION = 120; // seconds
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [aimAngle, setAimAngle] = useState(-Math.PI / 2);
   const gameLoopRef = useRef<number>();
@@ -124,6 +129,26 @@ const Index = () => {
     const unsub = subscribeToPlayers(mpSession.sessionId, setMpPlayers);
     return unsub;
   }, [mpSession]);
+
+  // Multiplayer countdown timer
+  useEffect(() => {
+    if (mpTimeLeft === null || !mpSession) return;
+    if (mpTimeLeft <= 0) {
+      // Time's up — end game
+      setGameState(prev => {
+        if (prev.isGameOver) return prev;
+        const finalState = { ...prev, isGameOver: true };
+        updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
+        SoundManager.gameOver();
+        return finalState;
+      });
+      return;
+    }
+    mpTimerRef.current = setInterval(() => {
+      setMpTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => { if (mpTimerRef.current) clearInterval(mpTimerRef.current); };
+  }, [mpTimeLeft === null, mpTimeLeft === 0, mpSession]);
 
   useEffect(() => {
     const gameLoop = () => {
@@ -209,6 +234,8 @@ const Index = () => {
     setIsDailyMode(false);
     setMpSession(null);
     setMpPlayers([]);
+    setMpTimeLeft(null);
+    if (mpTimerRef.current) clearInterval(mpTimerRef.current);
     setGameState(initializeGame());
     setShowLevelUp(false);
     setShowNameInput(false);
@@ -218,6 +245,7 @@ const Index = () => {
     setMpSession(session);
     setShowMultiplayer(false);
     setGameState(initializeGame(1, 0, false));
+    setMpTimeLeft(MATCH_DURATION);
   }, []);
 
   const handleStartDaily = () => {
@@ -379,7 +407,7 @@ const Index = () => {
           />
           {/* Multiplayer live scoreboard */}
           {mpSession && mpPlayers.length > 0 && (
-            <MultiplayerScoreboard players={mpPlayers} />
+            <MultiplayerScoreboard players={mpPlayers} timeLeft={mpTimeLeft} />
           )}
         </div>
 
