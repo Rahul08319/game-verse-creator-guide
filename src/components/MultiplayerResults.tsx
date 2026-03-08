@@ -4,6 +4,8 @@ import { MultiplayerPlayer, getPlayerId } from '../utils/multiplayer';
 interface Props {
   players: MultiplayerPlayer[];
   onClose: () => void;
+  onRematch: () => void;
+  rematchLoading?: boolean;
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
