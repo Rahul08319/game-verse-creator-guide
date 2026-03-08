@@ -253,6 +253,7 @@ const Index = () => {
                 ⚙️
               </button>
             </div>
+          </div>
         </div>
 
         {/* Game canvas area */}
@@ -355,6 +356,15 @@ const Index = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Settings overlay */}
+        {showSettings && (
+          <SettingsOverlay
+            settings={gameSettings}
+            onSave={handleSaveSettings}
+            onClose={() => setShowSettings(false)}
+          />
         )}
       </div>
 
