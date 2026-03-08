@@ -32,6 +32,7 @@ export interface MultiplayerPlayer {
   score: number;
   level: number;
   is_game_over: boolean;
+  joined_at?: string;
 }
 
 export const createRoom = async (playerName: string): Promise<MultiplayerSession | null> => {
