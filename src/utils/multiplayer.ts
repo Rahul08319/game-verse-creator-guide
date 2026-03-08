@@ -82,6 +82,22 @@ export const startGame = async (sessionId: string): Promise<boolean> => {
   return !error;
 };
 
+export const resetSessionForRematch = async (sessionId: string): Promise<number | null> => {
+  // Reset all players' scores
+  const { error: playersErr } = await supabase.from('game_players').update({
+    score: 0, level: 1, is_game_over: false, last_update: new Date().toISOString(),
+  }).eq('session_id', sessionId);
+  if (playersErr) return null;
+
+  // Reset session with new seed
+  const newSeed = Math.floor(Math.random() * 1000000);
+  const { error: sessionErr } = await supabase.from('game_sessions').update({
+    status: 'playing', started_at: new Date().toISOString(), ended_at: null, seed: newSeed,
+  }).eq('id', sessionId);
+  if (sessionErr) return null;
+  return newSeed;
+};
+
 export const updateScore = async (sessionId: string, score: number, level: number, isGameOver: boolean): Promise<void> => {
   const playerId = getPlayerId();
   await supabase.from('game_players').update({
