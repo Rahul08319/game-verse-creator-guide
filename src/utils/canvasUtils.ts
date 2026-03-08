@@ -1,6 +1,6 @@
 
 import { GameState, GameConfig, Bubble, Particle, ComboText } from '../types/gameTypes';
-import { wallBouncePositions } from './gameLogic';
+import { wallBouncePositions, getThemeBackground } from './gameLogic';
 
 const GAME_CONFIG: GameConfig = {
   canvasWidth: 350,
@@ -20,39 +20,25 @@ export const drawGame = (
   aimAngle: number,
   config: GameConfig
 ) => {
-  // Clear canvas
   ctx.clearRect(0, 0, config.canvasWidth, config.canvasHeight);
-  
-  // Draw dark background with subtle grid
   drawBackground(ctx, config);
   
-  // Draw particles (behind bubbles)
   if (gameState.particles) {
-    gameState.particles.forEach(particle => {
-      drawParticle(ctx, particle);
-    });
+    gameState.particles.forEach(particle => drawParticle(ctx, particle));
   }
   
-  // Draw bubbles
   if (gameState.bubbles) {
-    gameState.bubbles.forEach(bubble => {
-      drawBubble(ctx, bubble, gameState.isFrozen ?? false);
-    });
+    gameState.bubbles.forEach(bubble => drawBubble(ctx, bubble, gameState.isFrozen ?? false));
   }
   
-  // Draw current bubble
   if (gameState.currentBubble) {
-    // Draw trail particles behind the current bubble
     drawShooterTrail(ctx, gameState.currentBubble);
     drawBubble(ctx, gameState.currentBubble, false);
-    
-    // Draw aim line
     if (!gameState.isGameOver && !gameState.isPaused) {
       drawAimLine(ctx, gameState.currentBubble.position, aimAngle, config);
     }
   }
   
-  // Draw next bubble preview
   if (gameState.nextBubble) {
     const previewX = config.canvasWidth - 40;
     const previewY = config.canvasHeight - 40;
@@ -62,8 +48,6 @@ export const drawGame = (
       radius: config.bubbleRadius * 0.6
     };
     drawBubble(ctx, previewBubble, false);
-    
-    // Draw "NEXT" label with neon effect
     ctx.save();
     ctx.shadowColor = '#00FFFF';
     ctx.shadowBlur = 10;
@@ -74,19 +58,13 @@ export const drawGame = (
     ctx.restore();
   }
   
-  // Draw combo texts
   if (gameState.comboTexts) {
-    gameState.comboTexts.forEach(comboText => {
-      drawComboText(ctx, comboText);
-    });
+    gameState.comboTexts.forEach(comboText => drawComboText(ctx, comboText));
   }
   
-  // Draw freeze overlay
   if (gameState.isFrozen) {
     ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
     ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
-    
-    // Draw freeze timer
     ctx.save();
     ctx.shadowColor = '#00FFFF';
     ctx.shadowBlur = 20;
@@ -97,17 +75,13 @@ export const drawGame = (
     ctx.restore();
   }
   
-  // Draw wall bounce spark effects
   if (wallBouncePositions && wallBouncePositions.length > 0) {
-    wallBouncePositions.forEach(pos => {
-      drawWallBounceSparks(ctx, pos);
-    });
+    wallBouncePositions.forEach(pos => drawWallBounceSparks(ctx, pos));
   }
   
   if (gameState.isPaused) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
-    
     ctx.save();
     ctx.shadowColor = '#FF00FF';
     ctx.shadowBlur = 30;
@@ -120,40 +94,32 @@ export const drawGame = (
 };
 
 const drawBackground = (ctx: CanvasRenderingContext2D, config: GameConfig) => {
-  // Dark gradient background
+  const bg = getThemeBackground();
   const gradient = ctx.createLinearGradient(0, 0, 0, config.canvasHeight);
-  gradient.addColorStop(0, '#0a0a1a');
-  gradient.addColorStop(0.5, '#1a0a2e');
-  gradient.addColorStop(1, '#0a1a2e');
+  gradient.addColorStop(0, bg.top);
+  gradient.addColorStop(0.5, bg.mid);
+  gradient.addColorStop(1, bg.bottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
   
-  // Draw subtle hexagonal grid pattern
-  ctx.strokeStyle = 'rgba(255, 0, 255, 0.05)';
+  ctx.strokeStyle = bg.grid;
   ctx.lineWidth = 1;
   const gridSize = 30;
   for (let x = 0; x < config.canvasWidth; x += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, config.canvasHeight);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, config.canvasHeight); ctx.stroke();
   }
   for (let y = 0; y < config.canvasHeight; y += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(config.canvasWidth, y);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(config.canvasWidth, y); ctx.stroke();
   }
   
-  // Add corner glow effects
   const cornerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 150);
-  cornerGlow.addColorStop(0, 'rgba(255, 0, 128, 0.15)');
+  cornerGlow.addColorStop(0, bg.glow1);
   cornerGlow.addColorStop(1, 'transparent');
   ctx.fillStyle = cornerGlow;
   ctx.fillRect(0, 0, 150, 150);
   
   const cornerGlow2 = ctx.createRadialGradient(config.canvasWidth, config.canvasHeight, 0, config.canvasWidth, config.canvasHeight, 150);
-  cornerGlow2.addColorStop(0, 'rgba(0, 255, 255, 0.15)');
+  cornerGlow2.addColorStop(0, bg.glow2);
   cornerGlow2.addColorStop(1, 'transparent');
   ctx.fillStyle = cornerGlow2;
   ctx.fillRect(config.canvasWidth - 150, config.canvasHeight - 150, 150, 150);
@@ -165,14 +131,10 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
   
   ctx.save();
   
-  // Special effects for power-ups
   if (bubble.powerUp === 'bomb') {
-    // Bomb bubble - pulsing red/orange glow
     const pulseIntensity = 20 + Math.sin(Date.now() * 0.01) * 10;
     ctx.shadowColor = '#FF4500';
     ctx.shadowBlur = pulseIntensity;
-    
-    // Draw bomb icon
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     const bombGradient = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, radius);
@@ -181,20 +143,15 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
     bombGradient.addColorStop(1, '#991100');
     ctx.fillStyle = bombGradient;
     ctx.fill();
-    
-    // Bomb symbol
     ctx.fillStyle = '#FFFFFF';
     ctx.font = `bold ${radius}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('💣', x, y);
-    
   } else if (bubble.powerUp === 'rainbow') {
-    // Rainbow bubble - rotating gradient
     const time = Date.now() * 0.002;
     ctx.shadowColor = '#FFFFFF';
     ctx.shadowBlur = 25;
-    
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     const rainbowGradient = ctx.createConicGradient(time, x, y);
@@ -207,20 +164,15 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
     rainbowGradient.addColorStop(1, '#FF0080');
     ctx.fillStyle = rainbowGradient;
     ctx.fill();
-    
-    // Rainbow symbol
     ctx.fillStyle = '#FFFFFF';
     ctx.font = `bold ${radius * 0.8}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('🌈', x, y);
-    
   } else if (bubble.powerUp === 'freeze') {
-    // Freeze bubble - icy blue glow
     const pulseIntensity = 15 + Math.sin(Date.now() * 0.008) * 8;
     ctx.shadowColor = '#00FFFF';
     ctx.shadowBlur = pulseIntensity;
-    
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     const freezeGradient = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, radius);
@@ -229,23 +181,16 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
     freezeGradient.addColorStop(1, '#00CCFF');
     ctx.fillStyle = freezeGradient;
     ctx.fill();
-    
-    // Freeze symbol
     ctx.fillStyle = '#0066CC';
     ctx.font = `bold ${radius}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('❄️', x, y);
-    
   } else {
-    // Regular bubble with neon glow
     ctx.shadowColor = bubble.color;
     ctx.shadowBlur = isFrozen ? 5 : 15;
-    
-    // Draw main bubble
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    
     const bubbleGradient = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 0, x, y, radius);
     bubbleGradient.addColorStop(0, lightenColor(bubble.color, 50));
     bubbleGradient.addColorStop(0.7, bubble.color);
@@ -254,18 +199,15 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
     ctx.fill();
   }
   
-  // Bubble highlight (glass effect)
   const highlightGradient = ctx.createRadialGradient(x - radius * 0.4, y - radius * 0.4, 0, x, y, radius);
   highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
   highlightGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.2)');
   highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  
   ctx.beginPath();
   ctx.arc(x, y, radius * 0.9, 0, Math.PI * 2);
   ctx.fillStyle = highlightGradient;
   ctx.fill();
   
-  // Neon border
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.strokeStyle = bubble.powerUp ? '#FFFFFF' : bubble.color;
@@ -277,10 +219,8 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
 
 const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
   const alpha = particle.life / particle.maxLife;
-  
   ctx.save();
   ctx.globalAlpha = alpha;
-  
   if (particle.type === 'explosion') {
     ctx.shadowColor = particle.color;
     ctx.shadowBlur = 10;
@@ -294,14 +234,12 @@ const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
     ctx.fillStyle = particle.color;
     ctx.fill();
   } else if (particle.type === 'combo') {
-    // Star-shaped particles for combos
     ctx.shadowColor = particle.color;
     ctx.shadowBlur = 15;
     drawStar(ctx, particle.position.x, particle.position.y, 5, particle.radius * alpha, particle.radius * 0.5 * alpha);
     ctx.fillStyle = particle.color;
     ctx.fill();
   }
-  
   ctx.restore();
 };
 
@@ -310,29 +248,24 @@ const drawStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
   let x = cx;
   let y = cy;
   const step = Math.PI / spikes;
-  
   ctx.beginPath();
   ctx.moveTo(cx, cy - outerRadius);
-  
   for (let i = 0; i < spikes; i++) {
     x = cx + Math.cos(rot) * outerRadius;
     y = cy + Math.sin(rot) * outerRadius;
     ctx.lineTo(x, y);
     rot += step;
-    
     x = cx + Math.cos(rot) * innerRadius;
     y = cy + Math.sin(rot) * innerRadius;
     ctx.lineTo(x, y);
     rot += step;
   }
-  
   ctx.lineTo(cx, cy - outerRadius);
   ctx.closePath();
 };
 
 const drawComboText = (ctx: CanvasRenderingContext2D, comboText: ComboText) => {
   const alpha = comboText.life / 60;
-  
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.shadowColor = '#FFFF00';
@@ -356,43 +289,35 @@ const drawAimLine = (
   const endY = position.y + Math.sin(angle) * lineLength;
   
   ctx.save();
-  
-  // Neon aim line with glow
   ctx.shadowColor = '#00FFFF';
   ctx.shadowBlur = 10;
   
-  // Draw dotted line
   const dotCount = 15;
   for (let i = 0; i < dotCount; i++) {
     const t = i / dotCount;
     const x = position.x + (endX - position.x) * t;
     const y = position.y + (endY - position.y) * t;
     const radius = 3 - t * 2;
-    
     ctx.beginPath();
     ctx.arc(x, y, Math.max(1, radius), 0, Math.PI * 2);
     ctx.fillStyle = `rgba(0, 255, 255, ${1 - t * 0.5})`;
     ctx.fill();
   }
   
-  // Draw crosshair at end
   ctx.beginPath();
   ctx.arc(endX, endY, 6, 0, Math.PI * 2);
   ctx.strokeStyle = '#00FFFF';
   ctx.lineWidth = 2;
   ctx.stroke();
-  
   ctx.beginPath();
   ctx.moveTo(endX - 10, endY);
   ctx.lineTo(endX + 10, endY);
   ctx.moveTo(endX, endY - 10);
   ctx.lineTo(endX, endY + 10);
   ctx.stroke();
-  
   ctx.restore();
 };
 
-// Animated trail behind shooter bubble
 const trailPositions: { x: number; y: number; alpha: number; radius: number; color: string }[] = [];
 let trailFrame = 0;
 
@@ -401,7 +326,6 @@ const drawShooterTrail = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
   const { x, y } = bubble.position;
   const color = bubble.color;
 
-  // Add new trail dot every 2 frames
   if (trailFrame % 2 === 0) {
     trailPositions.push({
       x: x + (Math.random() - 0.5) * 8,
@@ -412,18 +336,12 @@ const drawShooterTrail = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
     });
   }
 
-  // Update and draw trail
   for (let i = trailPositions.length - 1; i >= 0; i--) {
     const t = trailPositions[i];
     t.alpha -= 0.025;
     t.radius *= 0.97;
     t.y += 0.3;
-
-    if (t.alpha <= 0) {
-      trailPositions.splice(i, 1);
-      continue;
-    }
-
+    if (t.alpha <= 0) { trailPositions.splice(i, 1); continue; }
     ctx.save();
     ctx.globalAlpha = t.alpha;
     ctx.shadowColor = t.color;
@@ -435,10 +353,8 @@ const drawShooterTrail = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
     ctx.restore();
   }
 
-  // Keep trail array bounded
   while (trailPositions.length > 30) trailPositions.shift();
 
-  // Glow ring around current bubble
   ctx.save();
   const pulseSize = 2 + Math.sin(Date.now() * 0.006) * 2;
   ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.006) * 0.15;
@@ -452,12 +368,10 @@ const drawShooterTrail = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
   ctx.restore();
 };
 
-// Wall bounce spark effect
 const drawWallBounceSparks = (ctx: CanvasRenderingContext2D, pos: { x: number; y: number }) => {
   const time = Date.now();
   const sparkCount = 6;
   const isLeftWall = pos.x < 50;
-
   ctx.save();
   for (let i = 0; i < sparkCount; i++) {
     const angle = isLeftWall
@@ -467,7 +381,6 @@ const drawWallBounceSparks = (ctx: CanvasRenderingContext2D, pos: { x: number; y
     const sx = pos.x + Math.cos(angle) * dist;
     const sy = pos.y + Math.sin(angle) * dist;
     const alpha = 0.5 + Math.sin(time * 0.015 + i * 0.5) * 0.3;
-
     ctx.globalAlpha = alpha;
     ctx.shadowColor = '#FFFF00';
     ctx.shadowBlur = 8;
@@ -479,7 +392,6 @@ const drawWallBounceSparks = (ctx: CanvasRenderingContext2D, pos: { x: number; y
   ctx.restore();
 };
 
-// Helper functions for color manipulation
 const lightenColor = (color: string, amount: number): string => {
   const hex = color.replace('#', '');
   const r = Math.min(255, parseInt(hex.slice(0, 2), 16) + amount);
