@@ -36,6 +36,9 @@ const Index = () => {
   const [showAchievements, setShowAchievements] = useState(false);
   const [isDailyMode, setIsDailyMode] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
+  const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [mpSession, setMpSession] = useState<MultiplayerSession | null>(null);
+  const [mpPlayers, setMpPlayers] = useState<MultiplayerPlayer[]>([]);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('bubble-pop-settings');
     const s = saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
