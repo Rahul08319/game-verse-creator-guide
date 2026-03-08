@@ -222,7 +222,10 @@ const Index = () => {
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
-      if (mpSession) updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
+      if (mpSession) {
+        updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
+        setShowMpResults(true);
+      }
       queueAchievements(finalState, undefined);
       if (isDailyMode) {
         saveDailyResult(newState.score, newState.level, playerName || 'Player');
