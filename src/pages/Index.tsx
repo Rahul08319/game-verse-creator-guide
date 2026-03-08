@@ -464,8 +464,13 @@ const Index = () => {
           }} />
         )}
 
-        {/* Game Over overlay */}
-        {gameState.isGameOver && (
+        {/* Multiplayer Results overlay */}
+        {showMpResults && mpPlayers.length > 0 && (
+          <MultiplayerResults players={mpPlayers} onClose={handleRestart} />
+        )}
+
+        {/* Game Over overlay (non-multiplayer) */}
+        {gameState.isGameOver && !showMpResults && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10 animate-fade-in">
             <div className="bg-gradient-to-br from-purple-900/90 to-pink-900/90 rounded-2xl p-6 text-center shadow-xl border border-pink-500/30 w-72">
               <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 mb-3">Game Over!</h2>
