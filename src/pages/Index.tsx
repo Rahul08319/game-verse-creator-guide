@@ -9,6 +9,7 @@ import AchievementToast from '../components/AchievementToast';
 import AchievementsOverlay from '../components/AchievementsOverlay';
 import MultiplayerOverlay from '../components/MultiplayerOverlay';
 import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
+import MultiplayerResults from '../components/MultiplayerResults';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -48,6 +49,7 @@ const Index = () => {
   });
 
   const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
+  const [showMpResults, setShowMpResults] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   const MATCH_DURATION = 120; // seconds
@@ -142,6 +144,7 @@ const Index = () => {
         SoundManager.gameOver();
         return finalState;
       });
+      setShowMpResults(true);
       return;
     }
     mpTimerRef.current = setInterval(() => {
@@ -219,7 +222,10 @@ const Index = () => {
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
-      if (mpSession) updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
+      if (mpSession) {
+        updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
+        setShowMpResults(true);
+      }
       queueAchievements(finalState, undefined);
       if (isDailyMode) {
         saveDailyResult(newState.score, newState.level, playerName || 'Player');
@@ -235,6 +241,7 @@ const Index = () => {
     setMpSession(null);
     setMpPlayers([]);
     setMpTimeLeft(null);
+    setShowMpResults(false);
     if (mpTimerRef.current) clearInterval(mpTimerRef.current);
     setGameState(initializeGame());
     setShowLevelUp(false);
@@ -460,8 +467,13 @@ const Index = () => {
           }} />
         )}
 
-        {/* Game Over overlay */}
-        {gameState.isGameOver && (
+        {/* Multiplayer Results overlay */}
+        {showMpResults && mpPlayers.length > 0 && (
+          <MultiplayerResults players={mpPlayers} onClose={handleRestart} />
+        )}
+
+        {/* Game Over overlay (non-multiplayer) */}
+        {gameState.isGameOver && !showMpResults && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10 animate-fade-in">
             <div className="bg-gradient-to-br from-purple-900/90 to-pink-900/90 rounded-2xl p-6 text-center shadow-xl border border-pink-500/30 w-72">
               <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 mb-3">Game Over!</h2>
