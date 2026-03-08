@@ -5,11 +5,14 @@ import GameUI from '../components/GameUI';
 import TutorialOverlay from '../components/TutorialOverlay';
 import SettingsOverlay, { GameSettings } from '../components/SettingsOverlay';
 import DailyChallengeOverlay from '../components/DailyChallengeOverlay';
+import AchievementToast from '../components/AchievementToast';
+import AchievementsOverlay from '../components/AchievementsOverlay';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
 import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 import { saveDailyResult } from '../utils/dailyChallenge';
+import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 
 const Index = () => {
@@ -27,7 +30,9 @@ const Index = () => {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showDailyChallenge, setShowDailyChallenge] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const [isDailyMode, setIsDailyMode] = useState(false);
+  const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('bubble-pop-settings');
     const s = saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
@@ -57,6 +62,21 @@ const Index = () => {
     };
     shake();
   }, []);
+
+  const queueAchievements = useCallback((newState: GameState, soundEvent?: string) => {
+    const { newlyUnlocked } = checkAchievements({
+      soundEvent,
+      combo: newState.combo,
+      level: newState.level,
+      score: newState.score,
+      bubblesLeft: newState.bubbles.length,
+      isDailyMode,
+      isGameOver: newState.isGameOver,
+    });
+    if (newlyUnlocked.length > 0) {
+      setAchievementQueue(prev => [...prev, ...newlyUnlocked]);
+    }
+  }, [isDailyMode]);
 
   useEffect(() => {
     YouTubePlayables.init({
@@ -134,14 +154,20 @@ const Index = () => {
       } else if (evt === 'attach') SoundManager.attach();
     }
 
+    // Check achievements after each shot
+    queueAchievements(newState, newState.soundEvent);
+
     if (newState.levelComplete) {
       SoundManager.levelUp();
       YouTubePlayables.sendScore(newState.score);
       setShowLevelUp(true);
+      const nextLevel = newState.level + 1;
       setGameState(newState);
+      // Check level achievements
+      queueAchievements({ ...newState, level: nextLevel }, undefined);
       setTimeout(() => {
         setShowLevelUp(false);
-        setGameState(initializeGame(newState.level + 1, newState.score, isDailyMode));
+        setGameState(initializeGame(nextLevel, newState.score, isDailyMode));
       }, 2000);
       return;
     }
@@ -150,7 +176,9 @@ const Index = () => {
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
       YouTubePlayables.sendScore(newState.score);
-      setGameState(prev => ({ ...prev, isGameOver: true }));
+      const finalState = { ...newState, isGameOver: true };
+      setGameState(finalState);
+      queueAchievements(finalState, undefined);
       if (isDailyMode) {
         saveDailyResult(newState.score, newState.level, playerName || 'Player');
       }
@@ -158,7 +186,7 @@ const Index = () => {
         setShowNameInput(true);
       }
     }
-  }, [gameState, triggerScreenShake, isDailyMode, playerName]);
+  }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements]);
 
   const handleRestart = () => {
     setIsDailyMode(false);
@@ -191,7 +219,6 @@ const Index = () => {
     setTheme(s.theme);
     SoundManager.setVolume(s.volume / 100);
     setShowSettings(false);
-    // Restart game with new settings
     setGameState(initializeGame(1, 0, isDailyMode));
   };
 
@@ -212,6 +239,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center p-2 overflow-hidden">
+      {/* Achievement toast */}
+      {achievementQueue.length > 0 && (
+        <AchievementToast
+          key={achievementQueue[0].id}
+          achievement={achievementQueue[0]}
+          onDone={() => setAchievementQueue(prev => prev.slice(1))}
+        />
+      )}
+
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse" />
@@ -231,7 +267,6 @@ const Index = () => {
         <div className={`flex flex-col ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
           <GameUI gameState={gameState} onRestart={handleRestart} onPause={handlePause} />
 
-          {/* Mode indicator */}
           {isDailyMode && (
             <div className="mt-1 text-center">
               <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/30 font-bold">
@@ -262,28 +297,35 @@ const Index = () => {
             <div className="flex gap-1">
               <button
                 onClick={handleToggleMute}
-                className="w-8 h-8 flex items-center justify-center bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10"
+                className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? '🔇' : '🔊'}
               </button>
               <button
                 onClick={() => { setShowLeaderboard(!showLeaderboard); setHighScores(getHighScores()); }}
-                className="w-8 h-8 flex items-center justify-center bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10"
+                className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Leaderboard"
               >
                 🏆
               </button>
               <button
+                onClick={() => setShowAchievements(true)}
+                className="w-7 h-7 flex items-center justify-center bg-amber-500/20 text-white rounded-lg text-xs hover:bg-amber-500/30 transition-all border border-amber-500/20"
+                title="Achievements"
+              >
+                🏅
+              </button>
+              <button
                 onClick={() => setShowDailyChallenge(true)}
-                className="w-8 h-8 flex items-center justify-center bg-yellow-500/20 text-white rounded-lg text-sm hover:bg-yellow-500/30 transition-all border border-yellow-500/20"
+                className="w-7 h-7 flex items-center justify-center bg-yellow-500/20 text-white rounded-lg text-xs hover:bg-yellow-500/30 transition-all border border-yellow-500/20"
                 title="Daily Challenge"
               >
                 📅
               </button>
               <button
                 onClick={() => setShowSettings(true)}
-                className="w-8 h-8 flex items-center justify-center bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10"
+                className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Settings"
               >
                 ⚙️
@@ -412,6 +454,11 @@ const Index = () => {
             onStart={handleStartDaily}
             onClose={() => setShowDailyChallenge(false)}
           />
+        )}
+
+        {/* Achievements overlay */}
+        {showAchievements && (
+          <AchievementsOverlay onClose={() => setShowAchievements(false)} />
         )}
       </div>
 
