@@ -144,6 +144,7 @@ const Index = () => {
         SoundManager.gameOver();
         return finalState;
       });
+      setShowMpResults(true);
       return;
     }
     mpTimerRef.current = setInterval(() => {
@@ -237,6 +238,7 @@ const Index = () => {
     setMpSession(null);
     setMpPlayers([]);
     setMpTimeLeft(null);
+    setShowMpResults(false);
     if (mpTimerRef.current) clearInterval(mpTimerRef.current);
     setGameState(initializeGame());
     setShowLevelUp(false);
