@@ -117,6 +117,14 @@ const Index = () => {
     };
   }, []);
 
+  // Multiplayer realtime subscription
+  useEffect(() => {
+    if (!mpSession) return;
+    getPlayers(mpSession.sessionId).then(setMpPlayers);
+    const unsub = subscribeToPlayers(mpSession.sessionId, setMpPlayers);
+    return unsub;
+  }, [mpSession]);
+
   useEffect(() => {
     const gameLoop = () => {
       setGameState(prev => {
