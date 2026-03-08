@@ -4,10 +4,12 @@ import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
 import TutorialOverlay from '../components/TutorialOverlay';
 import SettingsOverlay, { GameSettings } from '../components/SettingsOverlay';
+import DailyChallengeOverlay from '../components/DailyChallengeOverlay';
 import { GameState } from '../types/gameTypes';
-import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty } from '../utils/gameLogic';
+import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
 import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
+import { saveDailyResult } from '../utils/dailyChallenge';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 
 const Index = () => {
@@ -24,9 +26,14 @@ const Index = () => {
     return !localStorage.getItem('bubble-pop-tutorial-seen');
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showDailyChallenge, setShowDailyChallenge] = useState(false);
+  const [isDailyMode, setIsDailyMode] = useState(false);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('bubble-pop-settings');
-    return saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
+    const s = saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
+    setDifficulty(s.difficulty);
+    setTheme(s.theme);
+    return s;
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,7 +41,6 @@ const Index = () => {
   const gameLoopRef = useRef<number>();
   const shakeRef = useRef<number>();
 
-  // Screen shake function
   const triggerScreenShake = useCallback((intensity: number = 8, duration: number = 300) => {
     const startTime = Date.now();
     const shake = () => {
@@ -52,20 +58,17 @@ const Index = () => {
     shake();
   }, []);
 
-  // Init YouTube Playables SDK
   useEffect(() => {
     YouTubePlayables.init({
       onPause: () => setGameState(prev => ({ ...prev, isPaused: true })),
       onResume: () => setGameState(prev => ({ ...prev, isPaused: false })),
     });
-    // Signal first frame after mount
     setTimeout(() => {
       YouTubePlayables.firstFrameReady();
       YouTubePlayables.gameReady();
     }, 500);
   }, []);
 
-  // Detect orientation
   useEffect(() => {
     const check = () => setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
     check();
@@ -73,10 +76,10 @@ const Index = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Init audio on first interaction
   useEffect(() => {
     const initAudio = () => {
       SoundManager.init();
+      SoundManager.setVolume(gameSettings.volume / 100);
       document.removeEventListener('click', initAudio);
       document.removeEventListener('touchstart', initAudio);
     };
@@ -88,7 +91,6 @@ const Index = () => {
     };
   }, []);
 
-  // Game loop
   useEffect(() => {
     const gameLoop = () => {
       setGameState(prev => {
@@ -119,7 +121,7 @@ const Index = () => {
       const evt = newState.soundEvent;
       if (evt === 'bomb') {
         SoundManager.bomb();
-        triggerScreenShake(12, 400); // Strong shake for bombs!
+        triggerScreenShake(12, 400);
       }
       else if (evt === 'freeze') SoundManager.freeze();
       else if (evt === 'rainbow') SoundManager.rainbow();
@@ -128,7 +130,7 @@ const Index = () => {
         const comboLevel = parseInt(evt.split('-')[1]);
         SoundManager.combo(comboLevel);
         SoundManager.multiPop(comboLevel + 2);
-        if (comboLevel >= 3) triggerScreenShake(4, 200); // Light shake for big combos
+        if (comboLevel >= 3) triggerScreenShake(4, 200);
       } else if (evt === 'attach') SoundManager.attach();
     }
 
@@ -139,7 +141,7 @@ const Index = () => {
       setGameState(newState);
       setTimeout(() => {
         setShowLevelUp(false);
-        setGameState(initializeGame(newState.level + 1, newState.score));
+        setGameState(initializeGame(newState.level + 1, newState.score, isDailyMode));
       }, 2000);
       return;
     }
@@ -149,14 +151,26 @@ const Index = () => {
       SoundManager.gameOver();
       YouTubePlayables.sendScore(newState.score);
       setGameState(prev => ({ ...prev, isGameOver: true }));
+      if (isDailyMode) {
+        saveDailyResult(newState.score, newState.level, playerName || 'Player');
+      }
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
       }
     }
-  }, [gameState, triggerScreenShake]);
+  }, [gameState, triggerScreenShake, isDailyMode, playerName]);
 
   const handleRestart = () => {
+    setIsDailyMode(false);
     setGameState(initializeGame());
+    setShowLevelUp(false);
+    setShowNameInput(false);
+  };
+
+  const handleStartDaily = () => {
+    setIsDailyMode(true);
+    setShowDailyChallenge(false);
+    setGameState(initializeGame(1, 0, true));
     setShowLevelUp(false);
     setShowNameInput(false);
   };
@@ -174,14 +188,20 @@ const Index = () => {
     setGameSettings(s);
     localStorage.setItem('bubble-pop-settings', JSON.stringify(s));
     setDifficulty(s.difficulty);
+    setTheme(s.theme);
     SoundManager.setVolume(s.volume / 100);
     setShowSettings(false);
+    // Restart game with new settings
+    setGameState(initializeGame(1, 0, isDailyMode));
   };
 
   const handleSaveScore = () => {
     const name = playerName.trim() || 'Player';
     const updated = saveHighScore(gameState.score, gameState.level, name);
     setHighScores(updated);
+    if (isDailyMode) {
+      saveDailyResult(gameState.score, gameState.level, name);
+    }
     setShowNameInput(false);
     setPlayerName('');
   };
@@ -210,6 +230,15 @@ const Index = () => {
         {/* Side/Top panel */}
         <div className={`flex flex-col ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
           <GameUI gameState={gameState} onRestart={handleRestart} onPause={handlePause} />
+
+          {/* Mode indicator */}
+          {isDailyMode && (
+            <div className="mt-1 text-center">
+              <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/30 font-bold">
+                📅 DAILY CHALLENGE
+              </span>
+            </div>
+          )}
 
           {/* Level progress */}
           <div className="mt-2">
@@ -244,6 +273,13 @@ const Index = () => {
                 title="Leaderboard"
               >
                 🏆
+              </button>
+              <button
+                onClick={() => setShowDailyChallenge(true)}
+                className="w-8 h-8 flex items-center justify-center bg-yellow-500/20 text-white rounded-lg text-sm hover:bg-yellow-500/30 transition-all border border-yellow-500/20"
+                title="Daily Challenge"
+              >
+                📅
               </button>
               <button
                 onClick={() => setShowSettings(true)}
@@ -323,6 +359,9 @@ const Index = () => {
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10 animate-fade-in">
             <div className="bg-gradient-to-br from-purple-900/90 to-pink-900/90 rounded-2xl p-6 text-center shadow-xl border border-pink-500/30 w-72">
               <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 mb-3">Game Over!</h2>
+              {isDailyMode && (
+                <p className="text-yellow-400 text-xs font-bold mb-1">📅 Daily Challenge</p>
+              )}
               <p className="text-2xl text-white mb-1">{gameState.score.toLocaleString()}</p>
               <p className="text-sm text-gray-400 mb-4">Level {gameState.level}</p>
 
@@ -364,6 +403,14 @@ const Index = () => {
             settings={gameSettings}
             onSave={handleSaveSettings}
             onClose={() => setShowSettings(false)}
+          />
+        )}
+
+        {/* Daily Challenge overlay */}
+        {showDailyChallenge && (
+          <DailyChallengeOverlay
+            onStart={handleStartDaily}
+            onClose={() => setShowDailyChallenge(false)}
           />
         )}
       </div>

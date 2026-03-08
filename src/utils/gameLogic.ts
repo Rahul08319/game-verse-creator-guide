@@ -1,25 +1,44 @@
 import { GameState, Bubble, Position, GameConfig, Particle, ComboText, PowerUpType } from '../types/gameTypes';
-import type { GameSettings } from '../components/SettingsOverlay';
 
-const GAME_CONFIG: GameConfig = {
+// Theme color palettes
+const THEME_PALETTES = {
+  neon: ['#FF0080', '#00FFFF', '#00FF41', '#FFFF00', '#FF00FF', '#FF6600', '#0080FF'],
+  retro: ['#FF6600', '#FFFF00', '#00FF41', '#FF3333', '#CC66FF', '#33CCFF', '#FF9933'],
+  ocean: ['#0080FF', '#00CCCC', '#6600FF', '#0066AA', '#33AADD', '#9966FF', '#00AAAA'],
+};
+
+const THEME_BACKGROUNDS = {
+  neon: { top: '#0a0a1a', mid: '#1a0a2e', bottom: '#0a1a2e', glow1: 'rgba(255, 0, 128, 0.15)', glow2: 'rgba(0, 255, 255, 0.15)', grid: 'rgba(255, 0, 255, 0.05)' },
+  retro: { top: '#1a1a0a', mid: '#2e1a0a', bottom: '#1a2e0a', glow1: 'rgba(255, 102, 0, 0.15)', glow2: 'rgba(255, 255, 0, 0.15)', grid: 'rgba(255, 153, 0, 0.05)' },
+  ocean: { top: '#0a0a2e', mid: '#0a1a3e', bottom: '#0a2e3e', glow1: 'rgba(0, 128, 255, 0.15)', glow2: 'rgba(102, 0, 255, 0.15)', grid: 'rgba(0, 128, 255, 0.05)' },
+};
+
+let currentTheme: 'neon' | 'retro' | 'ocean' = 'neon';
+
+export const setTheme = (t: 'neon' | 'retro' | 'ocean') => { currentTheme = t; };
+export const getTheme = () => currentTheme;
+export const getThemeColors = () => THEME_PALETTES[currentTheme];
+export const getThemeBackground = () => THEME_BACKGROUNDS[currentTheme];
+
+const getGameConfig = (): GameConfig => ({
   canvasWidth: 350,
   canvasHeight: 500,
   bubbleRadius: 18,
-  colors: ['#FF0080', '#00FFFF', '#00FF41', '#FFFF00', '#FF00FF', '#FF6600', '#0080FF'],
-  neonColors: ['#FF0080', '#00FFFF', '#00FF41', '#FFFF00', '#FF00FF', '#FF6600', '#0080FF'],
+  colors: THEME_PALETTES[currentTheme],
+  neonColors: THEME_PALETTES[currentTheme],
   rowCount: 8,
   maxCols: 10
-};
+});
 
 const POWER_UP_CHANCE = 0.08;
 
 // Level definitions
 interface LevelDef {
   rows: number;
-  colorsUsed: number; // how many colors from the palette
+  colorsUsed: number;
   powerUpChance: number;
   pattern: 'random' | 'striped' | 'checkerboard' | 'diamond' | 'fortress';
-  targetScore: number; // score needed to advance
+  targetScore: number;
 }
 
 const LEVELS: LevelDef[] = [
@@ -37,7 +56,14 @@ const LEVELS: LevelDef[] = [
 
 const getLevelDef = (level: number): LevelDef => {
   const idx = Math.min(level - 1, LEVELS.length - 1);
-  return LEVELS[idx];
+  const baseDef = LEVELS[idx];
+  const mod = DIFFICULTY_MODS[currentDifficulty];
+  return {
+    ...baseDef,
+    rows: Math.max(2, baseDef.rows - mod.rowReduction),
+    colorsUsed: Math.max(2, Math.min(7, baseDef.colorsUsed - mod.colorReduction)),
+    powerUpChance: Math.max(0.01, baseDef.powerUpChance + mod.powerUpBoost),
+  };
 };
 
 export const getTargetScore = (level: number): number => getLevelDef(level).targetScore;
@@ -53,7 +79,34 @@ let currentDifficulty: 'easy' | 'normal' | 'hard' = 'normal';
 
 export const setDifficulty = (d: 'easy' | 'normal' | 'hard') => { currentDifficulty = d; };
 
-export const initializeGame = (level: number = 1, carryScore: number = 0): GameState => {
+// Seeded random for daily challenge
+class SeededRandom {
+  private seed: number;
+  constructor(seed: number) { this.seed = seed; }
+  next(): number {
+    this.seed = (this.seed * 16807 + 0) % 2147483647;
+    return (this.seed - 1) / 2147483646;
+  }
+}
+
+let seededRng: SeededRandom | null = null;
+
+export const getDailySeed = (): number => {
+  const now = new Date();
+  return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+};
+
+const getRandom = (): number => {
+  if (seededRng) return seededRng.next();
+  return Math.random();
+};
+
+export const initializeGame = (level: number = 1, carryScore: number = 0, dailyChallenge: boolean = false): GameState => {
+  if (dailyChallenge) {
+    seededRng = new SeededRandom(getDailySeed() + level * 1000);
+  } else {
+    seededRng = null;
+  }
   const bubbles = generateLevelBubbles(level);
 
   return {
@@ -75,8 +128,9 @@ export const initializeGame = (level: number = 1, carryScore: number = 0): GameS
 
 const generateLevelBubbles = (level: number): Bubble[] => {
   const def = getLevelDef(level);
-  const { canvasWidth, bubbleRadius, maxCols, colors } = GAME_CONFIG;
-  const levelColors = colors.slice(0, def.colorsUsed);
+  const config = getGameConfig();
+  const { canvasWidth, bubbleRadius, maxCols } = config;
+  const levelColors = config.colors.slice(0, def.colorsUsed);
   const bubbles: Bubble[] = [];
 
   for (let row = 0; row < def.rows; row++) {
@@ -84,7 +138,6 @@ const generateLevelBubbles = (level: number): Bubble[] => {
     const startX = (canvasWidth - (colsInRow * bubbleRadius * 2)) / 2 + bubbleRadius;
 
     for (let col = 0; col < colsInRow; col++) {
-      // Pattern-based skip
       if (shouldSkipCell(def.pattern, row, col, colsInRow, def.rows)) continue;
 
       const x = startX + col * bubbleRadius * 2 + (row % 2) * bubbleRadius;
@@ -112,12 +165,10 @@ const shouldSkipCell = (pattern: string, row: number, col: number, colsInRow: nu
   if (pattern === 'diamond') {
     const centerCol = Math.floor(colsInRow / 2);
     const dist = Math.abs(col - centerCol);
-    const maxDist = Math.floor(totalRows / 2) + 1;
     const allowedDist = row < totalRows / 2 ? row + 1 : totalRows - row;
     return dist > allowedDist;
   }
   if (pattern === 'fortress') {
-    // Leave gaps in the middle rows
     if (row >= 2 && row <= 4 && col >= 3 && col <= 5) return true;
   }
   return false;
@@ -130,25 +181,26 @@ const getPatternColor = (pattern: string, row: number, col: number, colors: stri
     case 'checkerboard':
       return colors[(row + col) % colors.length];
     default:
-      return colors[Math.floor(Math.random() * colors.length)];
+      return colors[Math.floor(getRandom() * colors.length)];
   }
 };
 
 const createRandomBubble = (level: number = 1): Bubble => {
   const def = getLevelDef(level);
-  const levelColors = GAME_CONFIG.colors.slice(0, def.colorsUsed);
-  const { bubbleRadius, canvasWidth } = GAME_CONFIG;
+  const config = getGameConfig();
+  const levelColors = config.colors.slice(0, def.colorsUsed);
+  const { bubbleRadius, canvasWidth } = config;
 
   let powerUp: PowerUpType = null;
-  if (Math.random() < def.powerUpChance) {
+  if (getRandom() < def.powerUpChance) {
     const powerUps: PowerUpType[] = ['bomb', 'rainbow', 'freeze'];
-    powerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
+    powerUp = powerUps[Math.floor(getRandom() * powerUps.length)];
   }
 
   return {
-    id: `bubble-${Date.now()}-${Math.random()}`,
-    position: { x: canvasWidth / 2, y: GAME_CONFIG.canvasHeight - 30 },
-    color: levelColors[Math.floor(Math.random() * levelColors.length)],
+    id: `bubble-${Date.now()}-${getRandom()}`,
+    position: { x: canvasWidth / 2, y: config.canvasHeight - 30 },
+    color: levelColors[Math.floor(getRandom() * levelColors.length)],
     radius: bubbleRadius,
     isFixed: false,
     row: -1,
@@ -227,6 +279,7 @@ export const updateComboTexts = (comboTexts: ComboText[]): ComboText[] => {
 export const updateGameState = (gameState: GameState, shootAngle: number): GameState => {
   if (!gameState.currentBubble) return gameState;
 
+  const config = getGameConfig();
   const newBubbles = [...gameState.bubbles];
   const shootingBubble = { ...gameState.currentBubble };
   let newParticles = [...gameState.particles];
@@ -251,7 +304,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
 
       // Handle power-ups
       if (shootingBubble.powerUp === 'bomb') {
-        const bombRadius = GAME_CONFIG.bubbleRadius * 4;
+        const bombRadius = config.bubbleRadius * 4;
         const affectedBubbles = newBubbles.filter(bubble => {
           const dx = bubble.position.x - shootingBubble.position.x;
           const dy = bubble.position.y - shootingBubble.position.y;
@@ -385,6 +438,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
 export let wallBouncePositions: Position[] = [];
 
 const simulateTrajectory = (start: Position, angle: number, speed: number, obstacles: Bubble[]): { trajectory: Position[], hitBubble: Bubble | null, hitTop: boolean } => {
+  const config = getGameConfig();
   const trajectory: Position[] = [];
   let pos = { ...start };
   const velocity = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
@@ -396,20 +450,20 @@ const simulateTrajectory = (start: Position, angle: number, speed: number, obsta
     pos.x += velocity.x;
     pos.y += velocity.y;
 
-    if (pos.x <= GAME_CONFIG.bubbleRadius || pos.x >= GAME_CONFIG.canvasWidth - GAME_CONFIG.bubbleRadius) {
+    if (pos.x <= config.bubbleRadius || pos.x >= config.canvasWidth - config.bubbleRadius) {
       velocity.x *= -1;
-      pos.x = Math.max(GAME_CONFIG.bubbleRadius, Math.min(GAME_CONFIG.canvasWidth - GAME_CONFIG.bubbleRadius, pos.x));
+      pos.x = Math.max(config.bubbleRadius, Math.min(config.canvasWidth - config.bubbleRadius, pos.x));
       wallBouncePositions.push({ ...pos });
     }
 
     const collision = obstacles.find(bubble => {
       const dx = pos.x - bubble.position.x;
       const dy = pos.y - bubble.position.y;
-      return Math.sqrt(dx * dx + dy * dy) <= GAME_CONFIG.bubbleRadius * 1.9;
+      return Math.sqrt(dx * dx + dy * dy) <= config.bubbleRadius * 1.9;
     });
 
     if (collision) { hitBubble = collision; break; }
-    if (pos.y <= GAME_CONFIG.bubbleRadius + 30) { hitTop = true; break; }
+    if (pos.y <= config.bubbleRadius + 30) { hitTop = true; break; }
     trajectory.push({ ...pos });
   }
 
@@ -417,7 +471,8 @@ const simulateTrajectory = (start: Position, angle: number, speed: number, obsta
 };
 
 const findAttachPosition = (position: Position, bubbles: Bubble[], hitBubble: Bubble | null): { position: Position; row: number; col: number } | null => {
-  const { bubbleRadius, canvasWidth } = GAME_CONFIG;
+  const config = getGameConfig();
+  const { bubbleRadius, canvasWidth } = config;
 
   if (hitBubble) {
     const { row: hitRow, col: hitCol } = hitBubble;
@@ -432,7 +487,7 @@ const findAttachPosition = (position: Position, bubbles: Bubble[], hitBubble: Bu
     for (const [dr, dc] of offsets) {
       const newRow = hitRow + dr;
       const newCol = hitCol + dc;
-      const colsInRow = GAME_CONFIG.maxCols - (newRow % 2);
+      const colsInRow = config.maxCols - (newRow % 2);
       if (newCol < 0 || newCol >= colsInRow || newRow < 0) continue;
       const occupied = bubbles.some(b => b.row === newRow && b.col === newCol);
       if (occupied) continue;
@@ -448,7 +503,7 @@ const findAttachPosition = (position: Position, bubbles: Bubble[], hitBubble: Bu
     }
 
     if (bestPos) {
-      const colsInRow = GAME_CONFIG.maxCols - (bestPos.row % 2);
+      const colsInRow = config.maxCols - (bestPos.row % 2);
       const startX = (canvasWidth - (colsInRow * bubbleRadius * 2)) / 2 + bubbleRadius;
       const finalX = startX + bestPos.col * bubbleRadius * 2 + (bestPos.row % 2) * bubbleRadius;
       const finalY = 50 + bestPos.row * bubbleRadius * 1.8;
@@ -458,7 +513,7 @@ const findAttachPosition = (position: Position, bubbles: Bubble[], hitBubble: Bu
 
   // Fallback: top row
   const row = 0;
-  const colsInRow = GAME_CONFIG.maxCols - (row % 2);
+  const colsInRow = config.maxCols - (row % 2);
   const startX = (canvasWidth - (colsInRow * bubbleRadius * 2)) / 2 + bubbleRadius;
   let bestCol = 0;
   let minDistance = Infinity;
@@ -491,34 +546,43 @@ const findMatches = (bubble: Bubble, bubbles: Bubble[]): Bubble[] => {
 
 const getNeighbors = (bubble: Bubble, bubbles: Bubble[]): Bubble[] => {
   const { row, col } = bubble;
-  const neighbors: Bubble[] = [];
-  const offsets = row % 2 === 0 ? [
-    [-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]
-  ] : [
-    [-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]
-  ];
-  offsets.forEach(([dr, dc]) => {
-    const neighbor = bubbles.find(b => b.row === row + dr && b.col === col + dc);
-    if (neighbor) neighbors.push(neighbor);
-  });
-  return neighbors;
+  const offsets = row % 2 === 0
+    ? [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]]
+    : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
+
+  return offsets
+    .map(([dr, dc]) => bubbles.find(b => b.row === row + dr && b.col === col + dc))
+    .filter((b): b is Bubble => b !== undefined);
 };
 
 const findConnectedBubbles = (bubbles: Bubble[]): Set<string> => {
   const connected = new Set<string>();
-  const topRowBubbles = bubbles.filter(b => b.row === 0);
-  const dfs = (bubble: Bubble) => {
-    if (connected.has(bubble.id)) return;
-    connected.add(bubble.id);
-    getNeighbors(bubble, bubbles).forEach(neighbor => dfs(neighbor));
+  const topBubbles = bubbles.filter(b => b.row === 0);
+
+  const bfs = (start: Bubble) => {
+    const queue = [start];
+    connected.add(start.id);
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const neighbors = getNeighbors(current, bubbles);
+      neighbors.forEach(n => {
+        if (!connected.has(n.id)) {
+          connected.add(n.id);
+          queue.push(n);
+        }
+      });
+    }
   };
-  topRowBubbles.forEach(bubble => dfs(bubble));
+
+  topBubbles.forEach(b => {
+    if (!connected.has(b.id)) bfs(b);
+  });
+
   return connected;
 };
 
 export const checkGameOver = (gameState: GameState): boolean => {
-  const bottommostBubble = gameState.bubbles.reduce((max, bubble) =>
-    bubble.position.y > max ? bubble.position.y : max, 0
-  );
-  return bottommostBubble >= GAME_CONFIG.canvasHeight - 100;
+  const config = getGameConfig();
+  const maxY = config.canvasHeight - 80;
+  return gameState.bubbles.some(b => b.position.y >= maxY) || gameState.lives <= 0;
 };
