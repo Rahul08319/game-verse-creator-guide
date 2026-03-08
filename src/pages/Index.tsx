@@ -187,11 +187,14 @@ const Index = () => {
     }
 
     setGameState(newState);
+    // Update multiplayer score
+    if (mpSession) updateScore(mpSession.sessionId, newState.score, newState.level, false);
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
+      if (mpSession) updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
       queueAchievements(finalState, undefined);
       if (isDailyMode) {
         saveDailyResult(newState.score, newState.level, playerName || 'Player');
@@ -200,14 +203,22 @@ const Index = () => {
         setShowNameInput(true);
       }
     }
-  }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements]);
+  }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements, mpSession]);
 
   const handleRestart = () => {
     setIsDailyMode(false);
+    setMpSession(null);
+    setMpPlayers([]);
     setGameState(initializeGame());
     setShowLevelUp(false);
     setShowNameInput(false);
   };
+
+  const handleStartMultiplayer = useCallback((session: MultiplayerSession) => {
+    setMpSession(session);
+    setShowMultiplayer(false);
+    setGameState(initializeGame(1, 0, false));
+  }, []);
 
   const handleStartDaily = () => {
     setIsDailyMode(true);
