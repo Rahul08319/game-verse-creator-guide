@@ -7,6 +7,8 @@ import SettingsOverlay, { GameSettings } from '../components/SettingsOverlay';
 import DailyChallengeOverlay from '../components/DailyChallengeOverlay';
 import AchievementToast from '../components/AchievementToast';
 import AchievementsOverlay from '../components/AchievementsOverlay';
+import MultiplayerOverlay from '../components/MultiplayerOverlay';
+import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -14,6 +16,7 @@ import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/h
 import { saveDailyResult } from '../utils/dailyChallenge';
 import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
+import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers } from '../utils/multiplayer';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
