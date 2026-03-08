@@ -349,6 +349,13 @@ const Index = () => {
                 📅
               </button>
               <button
+                onClick={() => setShowMultiplayer(true)}
+                className="w-7 h-7 flex items-center justify-center bg-green-500/20 text-white rounded-lg text-xs hover:bg-green-500/30 transition-all border border-green-500/20"
+                title="Multiplayer"
+              >
+                🎮
+              </button>
+              <button
                 onClick={() => setShowSettings(true)}
                 className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Settings"
