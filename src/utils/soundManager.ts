@@ -20,7 +20,6 @@ const getAudioContext = (): AudioContext => {
 const playTone = (frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.3, detune: number = 0) => {
   if (isMuted) return;
   const adjustedVolume = volume * masterVolume;
-  if (isMuted) return;
   try {
     const ctx = getAudioContext();
     const osc = ctx.createOscillator();
