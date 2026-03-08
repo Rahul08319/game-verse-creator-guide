@@ -377,6 +377,10 @@ const Index = () => {
             onAimChange={setAimAngle}
             onAimingChange={() => {}}
           />
+          {/* Multiplayer live scoreboard */}
+          {mpSession && mpPlayers.length > 0 && (
+            <MultiplayerScoreboard players={mpPlayers} />
+          )}
         </div>
 
         {/* Leaderboard overlay */}
@@ -491,6 +495,14 @@ const Index = () => {
         {/* Achievements overlay */}
         {showAchievements && (
           <AchievementsOverlay onClose={() => setShowAchievements(false)} />
+        )}
+
+        {/* Multiplayer overlay */}
+        {showMultiplayer && (
+          <MultiplayerOverlay
+            onStart={handleStartMultiplayer}
+            onClose={() => setShowMultiplayer(false)}
+          />
         )}
       </div>
 
