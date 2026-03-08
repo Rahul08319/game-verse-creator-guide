@@ -10,7 +10,7 @@ interface Props {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-const MultiplayerResults: React.FC<Props> = ({ players, onClose }) => {
+const MultiplayerResults: React.FC<Props> = ({ players, onClose, onRematch, rematchLoading }) => {
   const myId = getPlayerId();
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const winner = sorted[0];
@@ -82,12 +82,21 @@ const MultiplayerResults: React.FC<Props> = ({ players, onClose }) => {
           </div>
         )}
 
-        <button
-          onClick={onClose}
-          className="w-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white px-6 py-3 rounded-full font-semibold hover:scale-105 transform transition-all duration-200 shadow-lg shadow-pink-500/25"
-        >
-          Play Again
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onRematch}
+            disabled={rematchLoading}
+            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 rounded-full font-semibold hover:scale-105 transform transition-all duration-200 shadow-lg shadow-green-500/25 disabled:opacity-50"
+          >
+            {rematchLoading ? '...' : '🔄 Rematch'}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gradient-to-r from-pink-500 to-cyan-500 text-white px-4 py-3 rounded-full font-semibold hover:scale-105 transform transition-all duration-200 shadow-lg shadow-pink-500/25"
+          >
+            Leave
+          </button>
+        </div>
       </div>
     </div>
   );
