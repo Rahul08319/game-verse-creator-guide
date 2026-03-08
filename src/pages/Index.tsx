@@ -7,6 +7,8 @@ import SettingsOverlay, { GameSettings } from '../components/SettingsOverlay';
 import DailyChallengeOverlay from '../components/DailyChallengeOverlay';
 import AchievementToast from '../components/AchievementToast';
 import AchievementsOverlay from '../components/AchievementsOverlay';
+import MultiplayerOverlay from '../components/MultiplayerOverlay';
+import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -14,6 +16,7 @@ import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/h
 import { saveDailyResult } from '../utils/dailyChallenge';
 import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
+import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers } from '../utils/multiplayer';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
@@ -33,6 +36,9 @@ const Index = () => {
   const [showAchievements, setShowAchievements] = useState(false);
   const [isDailyMode, setIsDailyMode] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
+  const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [mpSession, setMpSession] = useState<MultiplayerSession | null>(null);
+  const [mpPlayers, setMpPlayers] = useState<MultiplayerPlayer[]>([]);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('bubble-pop-settings');
     const s = saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
@@ -111,6 +117,14 @@ const Index = () => {
     };
   }, []);
 
+  // Multiplayer realtime subscription
+  useEffect(() => {
+    if (!mpSession) return;
+    getPlayers(mpSession.sessionId).then(setMpPlayers);
+    const unsub = subscribeToPlayers(mpSession.sessionId, setMpPlayers);
+    return unsub;
+  }, [mpSession]);
+
   useEffect(() => {
     const gameLoop = () => {
       setGameState(prev => {
@@ -173,11 +187,14 @@ const Index = () => {
     }
 
     setGameState(newState);
+    // Update multiplayer score
+    if (mpSession) updateScore(mpSession.sessionId, newState.score, newState.level, false);
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
+      if (mpSession) updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
       queueAchievements(finalState, undefined);
       if (isDailyMode) {
         saveDailyResult(newState.score, newState.level, playerName || 'Player');
@@ -186,14 +203,22 @@ const Index = () => {
         setShowNameInput(true);
       }
     }
-  }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements]);
+  }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements, mpSession]);
 
   const handleRestart = () => {
     setIsDailyMode(false);
+    setMpSession(null);
+    setMpPlayers([]);
     setGameState(initializeGame());
     setShowLevelUp(false);
     setShowNameInput(false);
   };
+
+  const handleStartMultiplayer = useCallback((session: MultiplayerSession) => {
+    setMpSession(session);
+    setShowMultiplayer(false);
+    setGameState(initializeGame(1, 0, false));
+  }, []);
 
   const handleStartDaily = () => {
     setIsDailyMode(true);
@@ -324,6 +349,13 @@ const Index = () => {
                 📅
               </button>
               <button
+                onClick={() => setShowMultiplayer(true)}
+                className="w-7 h-7 flex items-center justify-center bg-green-500/20 text-white rounded-lg text-xs hover:bg-green-500/30 transition-all border border-green-500/20"
+                title="Multiplayer"
+              >
+                🎮
+              </button>
+              <button
                 onClick={() => setShowSettings(true)}
                 className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Settings"
@@ -345,6 +377,10 @@ const Index = () => {
             onAimChange={setAimAngle}
             onAimingChange={() => {}}
           />
+          {/* Multiplayer live scoreboard */}
+          {mpSession && mpPlayers.length > 0 && (
+            <MultiplayerScoreboard players={mpPlayers} />
+          )}
         </div>
 
         {/* Leaderboard overlay */}
@@ -459,6 +495,14 @@ const Index = () => {
         {/* Achievements overlay */}
         {showAchievements && (
           <AchievementsOverlay onClose={() => setShowAchievements(false)} />
+        )}
+
+        {/* Multiplayer overlay */}
+        {showMultiplayer && (
+          <MultiplayerOverlay
+            onStart={handleStartMultiplayer}
+            onClose={() => setShowMultiplayer(false)}
+          />
         )}
       </div>
 
