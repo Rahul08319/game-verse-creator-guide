@@ -9,6 +9,7 @@ import AchievementToast from '../components/AchievementToast';
 import AchievementsOverlay from '../components/AchievementsOverlay';
 import MultiplayerOverlay from '../components/MultiplayerOverlay';
 import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
+import MultiplayerResults from '../components/MultiplayerResults';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -48,6 +49,7 @@ const Index = () => {
   });
 
   const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
+  const [showMpResults, setShowMpResults] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   const MATCH_DURATION = 120; // seconds
