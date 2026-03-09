@@ -10,6 +10,15 @@ interface MultiplayerOverlayProps {
   onClose: () => void;
 }
 
+const LOBBY_EMOJIS = ['👋', '🔥', '😂', '👏', '💪', '🎯', '❤️', '🤩'];
+
+interface FloatingEmoji {
+  id: string;
+  emoji: string;
+  playerName: string;
+  createdAt: number;
+}
+
 const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClose }) => {
   const [tab, setTab] = useState<'create' | 'join'>('create');
   const [name, setName] = useState('');
@@ -18,6 +27,9 @@ const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClos
   const [players, setPlayers] = useState<MultiplayerPlayer[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lobbyEmojis, setLobbyEmojis] = useState<FloatingEmoji[]>([]);
+  const [emojiCooldown, setEmojiCooldown] = useState(false);
+  const lobbyChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!session) return;
