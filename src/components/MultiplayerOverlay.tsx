@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   createRoom, joinRoom, startGame, getPlayers, subscribeToPlayers, subscribeToSession,
   MultiplayerSession, MultiplayerPlayer, getPlayerId,
@@ -9,6 +10,15 @@ interface MultiplayerOverlayProps {
   onClose: () => void;
 }
 
+const LOBBY_EMOJIS = ['👋', '🔥', '😂', '👏', '💪', '🎯', '❤️', '🤩'];
+
+interface FloatingEmoji {
+  id: string;
+  emoji: string;
+  playerName: string;
+  createdAt: number;
+}
+
 const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClose }) => {
   const [tab, setTab] = useState<'create' | 'join'>('create');
   const [name, setName] = useState('');
@@ -17,6 +27,9 @@ const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClos
   const [players, setPlayers] = useState<MultiplayerPlayer[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lobbyEmojis, setLobbyEmojis] = useState<FloatingEmoji[]>([]);
+  const [emojiCooldown, setEmojiCooldown] = useState(false);
+  const lobbyChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -27,6 +40,45 @@ const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClos
     });
     return () => { unsub1(); unsub2(); };
   }, [session, onStart]);
+
+  // Lobby emoji broadcast channel
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase.channel(`lobby-reactions-${session.sessionId}`)
+      .on('broadcast', { event: 'lobby-emoji' }, ({ payload }) => {
+        if (!payload) return;
+        const fe: FloatingEmoji = {
+          id: crypto.randomUUID(),
+          emoji: payload.emoji,
+          playerName: payload.playerName || '',
+          createdAt: Date.now(),
+        };
+        setLobbyEmojis(prev => [...prev.slice(-8), fe]);
+      })
+      .subscribe();
+    lobbyChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); lobbyChannelRef.current = null; };
+  }, [session]);
+
+  // Clean old lobby emojis
+  useEffect(() => {
+    if (lobbyEmojis.length === 0) return;
+    const t = setTimeout(() => {
+      setLobbyEmojis(prev => prev.filter(e => Date.now() - e.createdAt < 2000));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [lobbyEmojis]);
+
+  const sendLobbyEmoji = useCallback((emoji: string) => {
+    if (emojiCooldown || !lobbyChannelRef.current) return;
+    setEmojiCooldown(true);
+    setTimeout(() => setEmojiCooldown(false), 600);
+    lobbyChannelRef.current.send({
+      type: 'broadcast',
+      event: 'lobby-emoji',
+      payload: { emoji, playerName: name || 'Player' },
+    });
+  }, [emojiCooldown, name]);
 
   const handleCreate = async () => {
     setLoading(true);
@@ -83,6 +135,35 @@ const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClos
                 <span className="text-green-400 text-[10px]">Ready</span>
               </div>
             ))}
+          </div>
+
+          {/* Lobby emoji reactions */}
+          <div className="mb-3">
+            <div className="relative h-8 overflow-hidden mb-1">
+              {lobbyEmojis.map(fe => (
+                <span
+                  key={fe.id}
+                  className="absolute animate-emoji-float text-lg"
+                  style={{ left: `${10 + Math.random() * 70}%`, bottom: 0 }}
+                >
+                  {fe.emoji}
+                </span>
+              ))}
+            </div>
+            <div className="flex justify-center gap-0.5">
+              {LOBBY_EMOJIS.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => sendLobbyEmoji(emoji)}
+                  disabled={emojiCooldown}
+                  className={`w-7 h-7 flex items-center justify-center rounded-full text-sm hover:scale-125 hover:bg-white/10 transition-all ${
+                    emojiCooldown ? 'opacity-40' : ''
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
 
           {players.length < 2 ? (
