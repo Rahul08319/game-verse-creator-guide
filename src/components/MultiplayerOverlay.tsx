@@ -137,6 +137,35 @@ const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClos
             ))}
           </div>
 
+          {/* Lobby emoji reactions */}
+          <div className="mb-3">
+            <div className="relative h-8 overflow-hidden mb-1">
+              {lobbyEmojis.map(fe => (
+                <span
+                  key={fe.id}
+                  className="absolute animate-emoji-float text-lg"
+                  style={{ left: `${10 + Math.random() * 70}%`, bottom: 0 }}
+                >
+                  {fe.emoji}
+                </span>
+              ))}
+            </div>
+            <div className="flex justify-center gap-0.5">
+              {LOBBY_EMOJIS.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => sendLobbyEmoji(emoji)}
+                  disabled={emojiCooldown}
+                  className={`w-7 h-7 flex items-center justify-center rounded-full text-sm hover:scale-125 hover:bg-white/10 transition-all ${
+                    emojiCooldown ? 'opacity-40' : ''
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {players.length < 2 ? (
             <p className="text-yellow-400/80 text-xs text-center animate-pulse">Waiting for players...</p>
           ) : isHost ? (
