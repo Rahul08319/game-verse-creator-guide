@@ -4,9 +4,6 @@ import {
   createRoom, joinRoom, startGame, getPlayers, subscribeToPlayers, subscribeToSession,
   MultiplayerSession, MultiplayerPlayer, getPlayerId,
 } from '../utils/multiplayer';
-  createRoom, joinRoom, startGame, getPlayers, subscribeToPlayers, subscribeToSession,
-  MultiplayerSession, MultiplayerPlayer, getPlayerId,
-} from '../utils/multiplayer';
 
 interface MultiplayerOverlayProps {
   onStart: (session: MultiplayerSession) => void;
