@@ -41,6 +41,45 @@ const MultiplayerOverlay: React.FC<MultiplayerOverlayProps> = ({ onStart, onClos
     return () => { unsub1(); unsub2(); };
   }, [session, onStart]);
 
+  // Lobby emoji broadcast channel
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase.channel(`lobby-reactions-${session.sessionId}`)
+      .on('broadcast', { event: 'lobby-emoji' }, ({ payload }) => {
+        if (!payload) return;
+        const fe: FloatingEmoji = {
+          id: crypto.randomUUID(),
+          emoji: payload.emoji,
+          playerName: payload.playerName || '',
+          createdAt: Date.now(),
+        };
+        setLobbyEmojis(prev => [...prev.slice(-8), fe]);
+      })
+      .subscribe();
+    lobbyChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); lobbyChannelRef.current = null; };
+  }, [session]);
+
+  // Clean old lobby emojis
+  useEffect(() => {
+    if (lobbyEmojis.length === 0) return;
+    const t = setTimeout(() => {
+      setLobbyEmojis(prev => prev.filter(e => Date.now() - e.createdAt < 2000));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [lobbyEmojis]);
+
+  const sendLobbyEmoji = useCallback((emoji: string) => {
+    if (emojiCooldown || !lobbyChannelRef.current) return;
+    setEmojiCooldown(true);
+    setTimeout(() => setEmojiCooldown(false), 600);
+    lobbyChannelRef.current.send({
+      type: 'broadcast',
+      event: 'lobby-emoji',
+      payload: { emoji, playerName: name || 'Player' },
+    });
+  }, [emojiCooldown, name]);
+
   const handleCreate = async () => {
     setLoading(true);
     setError('');
