@@ -429,6 +429,9 @@ const Index = () => {
           {mpSession && mpPlayers.length > 0 && (
             <MultiplayerScoreboard players={mpPlayers} timeLeft={mpTimeLeft} />
           )}
+          {mpSession && !gameState.isGameOver && (
+            <EmojiReactions sessionId={mpSession.sessionId} />
+          )}
         </div>
 
         {/* Leaderboard overlay */}
