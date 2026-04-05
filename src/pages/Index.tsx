@@ -207,6 +207,7 @@ const Index = () => {
 
     if (newState.levelComplete) {
       SoundManager.levelUp();
+      Haptics.levelUp();
       YouTubePlayables.sendScore(newState.score);
       setShowLevelUp(true);
       const nextLevel = newState.level + 1;
