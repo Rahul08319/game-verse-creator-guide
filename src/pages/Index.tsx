@@ -21,6 +21,7 @@ import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
 import { Haptics } from '../utils/haptics';
+import { shareScore } from '../utils/social';
 
 const Index = () => {
   const navigate = useNavigate();
