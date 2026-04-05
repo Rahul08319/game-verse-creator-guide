@@ -466,6 +466,12 @@ const Index = () => {
                   ))}
                 </div>
               )}
+              <button
+                onClick={() => navigate('/leaderboard')}
+                className="mt-4 w-full py-2 text-sm text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+              >
+                View Full Leaderboard →
+              </button>
             </div>
           </div>
         )}
