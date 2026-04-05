@@ -535,6 +535,12 @@ const Index = () => {
                 </div>
               )}
 
+              <div className="flex gap-2 mb-4 justify-center">
+                <button onClick={() => shareScore(gameState.score, gameState.level, 'twitter')} className="px-3 py-1.5 bg-[#1da1f2]/20 hover:bg-[#1da1f2]/40 text-[#1da1f2] rounded-lg text-xs font-medium transition-all" title="Share on X">𝕏</button>
+                <button onClick={() => shareScore(gameState.score, gameState.level, 'facebook')} className="px-3 py-1.5 bg-[#1877f2]/20 hover:bg-[#1877f2]/40 text-[#1877f2] rounded-lg text-xs font-medium transition-all" title="Share on Facebook">f</button>
+                <button onClick={() => { shareScore(gameState.score, gameState.level, 'copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg text-xs font-medium transition-all" title="Copy to clipboard">{copied ? '✓' : '📋'}</button>
+              </div>
+
               <button
                 onClick={handleRestart}
                 className="bg-gradient-to-r from-pink-500 to-cyan-500 text-white px-8 py-3 rounded-full font-semibold hover:scale-105 transform transition-all duration-200 shadow-lg shadow-pink-500/25"
