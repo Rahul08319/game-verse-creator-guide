@@ -296,9 +296,9 @@ const Index = () => {
     setGameState(initializeGame(1, 0, isDailyMode));
   };
 
-  const handleSaveScore = () => {
+  const handleSaveScore = async () => {
     const name = playerName.trim() || 'Player';
-    const updated = saveHighScore(gameState.score, gameState.level, name);
+    const updated = await saveHighScore(gameState.score, gameState.level, name);
     setHighScores(updated);
     if (isDailyMode) {
       saveDailyResult(gameState.score, gameState.level, name);
