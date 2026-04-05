@@ -7,6 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getAvatarColor, getInitials } from '@/utils/social';
 
 const PAGE_SIZE = 15;
 const MEDALS = ['🥇', '🥈', '🥉'];
