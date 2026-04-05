@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
 import TutorialOverlay from '../components/TutorialOverlay';
