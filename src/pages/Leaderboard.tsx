@@ -7,6 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getAvatarColor, getInitials } from '@/utils/social';
 
 const PAGE_SIZE = 15;
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -179,9 +180,17 @@ const Leaderboard = () => {
                   <span className="text-lg font-bold">
                     {isTop3 ? MEDALS[rank - 1] : <span className="text-white/30 text-sm">{rank}</span>}
                   </span>
-                  <span className={cn('font-medium truncate', isTop3 ? 'text-yellow-300' : 'text-white/80')}>
-                    {s.player_name}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${getAvatarColor(s.player_name)[0]}, ${getAvatarColor(s.player_name)[1]})` }}
+                    >
+                      {getInitials(s.player_name)}
+                    </div>
+                    <span className={cn('font-medium truncate', isTop3 ? 'text-yellow-300' : 'text-white/80')}>
+                      {s.player_name}
+                    </span>
+                  </div>
                   <span className={cn('text-right font-mono font-bold', isTop3 ? 'text-yellow-400' : 'text-purple-300')}>
                     {s.score.toLocaleString()}
                   </span>

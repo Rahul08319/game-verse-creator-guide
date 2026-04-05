@@ -21,6 +21,7 @@ import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
 import { Haptics } from '../utils/haptics';
+import { shareScore, getAvatarColor, getInitials } from '../utils/social';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ const Index = () => {
   const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
   const [showMpResults, setShowMpResults] = useState(false);
   const [rematchLoading, setRematchLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   const MATCH_DURATION = 120; // seconds
@@ -459,6 +461,12 @@ const Index = () => {
                       <span className={`text-lg font-bold w-6 text-center ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-500'}`}>
                         {i + 1}
                       </span>
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${getAvatarColor(hs.name)[0]}, ${getAvatarColor(hs.name)[1]})` }}
+                      >
+                        {getInitials(hs.name)}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-white text-sm font-semibold truncate">{hs.name}</div>
                         <div className="text-gray-500 text-[10px]">Lvl {hs.level} · {hs.date}</div>
@@ -534,6 +542,12 @@ const Index = () => {
                   </button>
                 </div>
               )}
+
+              <div className="flex gap-2 mb-4 justify-center">
+                <button onClick={() => shareScore(gameState.score, gameState.level, 'twitter')} className="px-3 py-1.5 bg-[#1da1f2]/20 hover:bg-[#1da1f2]/40 text-[#1da1f2] rounded-lg text-xs font-medium transition-all" title="Share on X">𝕏</button>
+                <button onClick={() => shareScore(gameState.score, gameState.level, 'facebook')} className="px-3 py-1.5 bg-[#1877f2]/20 hover:bg-[#1877f2]/40 text-[#1877f2] rounded-lg text-xs font-medium transition-all" title="Share on Facebook">f</button>
+                <button onClick={() => { shareScore(gameState.score, gameState.level, 'copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg text-xs font-medium transition-all" title="Copy to clipboard">{copied ? '✓' : '📋'}</button>
+              </div>
 
               <button
                 onClick={handleRestart}
