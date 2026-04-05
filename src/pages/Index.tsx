@@ -14,11 +14,12 @@ import EmojiReactions from '../components/EmojiReactions';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
-import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
+import { getHighScores, getGlobalHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 import { saveDailyResult } from '../utils/dailyChallenge';
 import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
+import { Haptics } from '../utils/haptics';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
@@ -179,21 +180,24 @@ const Index = () => {
   const handleShoot = useCallback((angle: number) => {
     if (gameState.isGameOver || gameState.isPaused || !gameState.currentBubble) return;
     SoundManager.shoot();
+    Haptics.shoot();
     const newState = updateGameState(gameState, angle);
 
     if (newState.soundEvent) {
       const evt = newState.soundEvent;
       if (evt === 'bomb') {
         SoundManager.bomb();
+        Haptics.explosion();
         triggerScreenShake(12, 400);
       }
       else if (evt === 'freeze') SoundManager.freeze();
       else if (evt === 'rainbow') SoundManager.rainbow();
-      else if (evt === 'pop') SoundManager.multiPop(3);
+      else if (evt === 'pop') { SoundManager.multiPop(3); Haptics.pop(); }
       else if (evt.startsWith('combo-')) {
         const comboLevel = parseInt(evt.split('-')[1]);
         SoundManager.combo(comboLevel);
         SoundManager.multiPop(comboLevel + 2);
+        Haptics.combo(comboLevel);
         if (comboLevel >= 3) triggerScreenShake(4, 200);
       } else if (evt === 'attach') SoundManager.attach();
     }
@@ -203,6 +207,7 @@ const Index = () => {
 
     if (newState.levelComplete) {
       SoundManager.levelUp();
+      Haptics.levelUp();
       YouTubePlayables.sendScore(newState.score);
       setShowLevelUp(true);
       const nextLevel = newState.level + 1;
@@ -221,6 +226,7 @@ const Index = () => {
     if (mpSession) updateScore(mpSession.sessionId, newState.score, newState.level, false);
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
+      Haptics.gameOver();
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
@@ -295,9 +301,9 @@ const Index = () => {
     setGameState(initializeGame(1, 0, isDailyMode));
   };
 
-  const handleSaveScore = () => {
+  const handleSaveScore = async () => {
     const name = playerName.trim() || 'Player';
-    const updated = saveHighScore(gameState.score, gameState.level, name);
+    const updated = await saveHighScore(gameState.score, gameState.level, name);
     setHighScores(updated);
     if (isDailyMode) {
       saveDailyResult(gameState.score, gameState.level, name);
@@ -376,7 +382,7 @@ const Index = () => {
                 {isMuted ? '🔇' : '🔊'}
               </button>
               <button
-                onClick={() => { setShowLeaderboard(!showLeaderboard); setHighScores(getHighScores()); }}
+                onClick={async () => { setShowLeaderboard(!showLeaderboard); setHighScores(await getGlobalHighScores()); }}
                 className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Leaderboard"
               >
