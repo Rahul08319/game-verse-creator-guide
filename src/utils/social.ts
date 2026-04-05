@@ -27,10 +27,10 @@ const AVATAR_COLORS = [
   ['#fb923c', '#f97316'], // orange
 ];
 
-export const getAvatarColor = (name: string): [string, string] => {
+export const getAvatarColor = (name: string): readonly [string, string] => {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length] as [string, string];
 };
 
 export const getInitials = (name: string): string => {
