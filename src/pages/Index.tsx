@@ -14,7 +14,7 @@ import EmojiReactions from '../components/EmojiReactions';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
-import { getHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
+import { getHighScores, getGlobalHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 import { saveDailyResult } from '../utils/dailyChallenge';
 import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
