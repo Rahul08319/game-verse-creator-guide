@@ -226,6 +226,7 @@ const Index = () => {
     if (mpSession) updateScore(mpSession.sessionId, newState.score, newState.level, false);
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
+      Haptics.gameOver();
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
