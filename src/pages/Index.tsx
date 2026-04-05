@@ -19,6 +19,7 @@ import { saveDailyResult } from '../utils/dailyChallenge';
 import { checkAchievements, Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
+import { Haptics } from '../utils/haptics';
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
