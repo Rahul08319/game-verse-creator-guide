@@ -382,7 +382,7 @@ const Index = () => {
                 {isMuted ? '🔇' : '🔊'}
               </button>
               <button
-                onClick={() => { setShowLeaderboard(!showLeaderboard); setHighScores(getHighScores()); }}
+                onClick={async () => { setShowLeaderboard(!showLeaderboard); setHighScores(await getGlobalHighScores()); }}
                 className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Leaderboard"
               >
