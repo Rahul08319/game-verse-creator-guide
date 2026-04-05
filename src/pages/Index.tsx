@@ -461,6 +461,12 @@ const Index = () => {
                       <span className={`text-lg font-bold w-6 text-center ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-500'}`}>
                         {i + 1}
                       </span>
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${getAvatarColor(hs.name)[0]}, ${getAvatarColor(hs.name)[1]})` }}
+                      >
+                        {getInitials(hs.name)}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-white text-sm font-semibold truncate">{hs.name}</div>
                         <div className="text-gray-500 text-[10px]">Lvl {hs.level} · {hs.date}</div>
