@@ -180,21 +180,24 @@ const Index = () => {
   const handleShoot = useCallback((angle: number) => {
     if (gameState.isGameOver || gameState.isPaused || !gameState.currentBubble) return;
     SoundManager.shoot();
+    Haptics.shoot();
     const newState = updateGameState(gameState, angle);
 
     if (newState.soundEvent) {
       const evt = newState.soundEvent;
       if (evt === 'bomb') {
         SoundManager.bomb();
+        Haptics.explosion();
         triggerScreenShake(12, 400);
       }
       else if (evt === 'freeze') SoundManager.freeze();
       else if (evt === 'rainbow') SoundManager.rainbow();
-      else if (evt === 'pop') SoundManager.multiPop(3);
+      else if (evt === 'pop') { SoundManager.multiPop(3); Haptics.pop(); }
       else if (evt.startsWith('combo-')) {
         const comboLevel = parseInt(evt.split('-')[1]);
         SoundManager.combo(comboLevel);
         SoundManager.multiPop(comboLevel + 2);
+        Haptics.combo(comboLevel);
         if (comboLevel >= 3) triggerScreenShake(4, 200);
       } else if (evt === 'attach') SoundManager.attach();
     }
