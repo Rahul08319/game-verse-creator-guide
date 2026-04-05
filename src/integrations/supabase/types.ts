@@ -88,6 +88,30 @@ export type Database = {
         }
         Relationships: []
       }
+      high_scores: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          player_name: string
+          score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: number
+          player_name?: string
+          score: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          player_name?: string
+          score?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
