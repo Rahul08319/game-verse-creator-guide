@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
 import TutorialOverlay from '../components/TutorialOverlay';
@@ -22,6 +23,7 @@ import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscri
 import { Haptics } from '../utils/haptics';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [showLevelUp, setShowLevelUp] = useState(false);
@@ -466,6 +468,12 @@ const Index = () => {
                   ))}
                 </div>
               )}
+              <button
+                onClick={() => navigate('/leaderboard')}
+                className="mt-4 w-full py-2 text-sm text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+              >
+                View Full Leaderboard →
+              </button>
             </div>
           </div>
         )}
