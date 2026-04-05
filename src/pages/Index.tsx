@@ -56,6 +56,7 @@ const Index = () => {
   const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
   const [showMpResults, setShowMpResults] = useState(false);
   const [rematchLoading, setRematchLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   const MATCH_DURATION = 120; // seconds
