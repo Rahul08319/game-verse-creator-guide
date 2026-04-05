@@ -23,6 +23,7 @@ import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscri
 import { Haptics } from '../utils/haptics';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [showLevelUp, setShowLevelUp] = useState(false);
