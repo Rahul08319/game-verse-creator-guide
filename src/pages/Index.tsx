@@ -44,6 +44,7 @@ const Index = () => {
   const [isDailyMode, setIsDailyMode] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
   const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [mpSession, setMpSession] = useState<MultiplayerSession | null>(null);
   const [mpPlayers, setMpPlayers] = useState<MultiplayerPlayer[]>([]);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
