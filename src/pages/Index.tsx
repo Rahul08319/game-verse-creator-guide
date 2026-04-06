@@ -514,6 +514,8 @@ const Index = () => {
           <MultiplayerResults players={mpPlayers} onClose={handleRestart} onRematch={handleRematch} rematchLoading={rematchLoading} />
         )}
 
+        <ConfettiEffect active={showConfetti} />
+
         {/* Game Over overlay (non-multiplayer) */}
         {gameState.isGameOver && !showMpResults && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10 animate-fade-in">
