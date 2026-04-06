@@ -245,6 +245,8 @@ const Index = () => {
       }
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
     }
   }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements, mpSession]);
