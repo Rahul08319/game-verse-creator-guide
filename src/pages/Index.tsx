@@ -12,6 +12,7 @@ import MultiplayerOverlay from '../components/MultiplayerOverlay';
 import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
 import MultiplayerResults from '../components/MultiplayerResults';
 import EmojiReactions from '../components/EmojiReactions';
+import ConfettiEffect from '../components/ConfettiEffect';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -43,6 +44,7 @@ const Index = () => {
   const [isDailyMode, setIsDailyMode] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
   const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [mpSession, setMpSession] = useState<MultiplayerSession | null>(null);
   const [mpPlayers, setMpPlayers] = useState<MultiplayerPlayer[]>([]);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
@@ -244,6 +246,8 @@ const Index = () => {
       }
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
     }
   }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements, mpSession]);
@@ -509,6 +513,8 @@ const Index = () => {
         {showMpResults && mpPlayers.length > 0 && (
           <MultiplayerResults players={mpPlayers} onClose={handleRestart} onRematch={handleRematch} rematchLoading={rematchLoading} />
         )}
+
+        <ConfettiEffect active={showConfetti} />
 
         {/* Game Over overlay (non-multiplayer) */}
         {gameState.isGameOver && !showMpResults && (
