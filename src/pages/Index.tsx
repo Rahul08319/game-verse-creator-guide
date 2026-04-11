@@ -421,7 +421,7 @@ const Index = () => {
                 🎮
               </button>
               <button
-                onClick={() => setShowStats(true)}
+                onClick={() => { console.log('Stats clicked, setting showStats to true'); setShowStats(true); }}
                 className="w-7 h-7 flex items-center justify-center bg-cyan-500/20 text-white rounded-lg text-xs hover:bg-cyan-500/30 transition-all border border-cyan-500/20"
                 title="Stats"
               >
