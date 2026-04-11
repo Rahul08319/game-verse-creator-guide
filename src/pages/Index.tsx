@@ -421,6 +421,13 @@ const Index = () => {
                 🎮
               </button>
               <button
+                onClick={() => setShowStats(true)}
+                className="w-7 h-7 flex items-center justify-center bg-cyan-500/20 text-white rounded-lg text-xs hover:bg-cyan-500/30 transition-all border border-cyan-500/20"
+                title="Stats"
+              >
+                📊
+              </button>
+              <button
                 onClick={() => setShowSettings(true)}
                 className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Settings"
@@ -596,6 +603,11 @@ const Index = () => {
             onStart={handleStartMultiplayer}
             onClose={() => setShowMultiplayer(false)}
           />
+        )}
+
+        {/* Stats overlay */}
+        {showStats && (
+          <StatsOverlay onClose={() => setShowStats(false)} />
         )}
       </div>
 
