@@ -168,6 +168,22 @@ export const SoundManager = {
       setTimeout(() => playTone(freq, 0.25, 'sine', 0.25), i * 100);
     });
   },
+  celebration: () => {
+    // Ascending fanfare
+    const fanfare = [523, 659, 784, 880, 1047, 1319, 1568];
+    fanfare.forEach((freq, i) => {
+      setTimeout(() => {
+        playTone(freq, 0.35, 'sine', 0.25);
+        playTone(freq * 1.5, 0.25, 'triangle', 0.1);
+      }, i * 120);
+    });
+    // Sparkle shimmer
+    setTimeout(() => {
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => playTone(2000 + Math.random() * 2000, 0.1, 'sine', 0.08), i * 60);
+      }
+    }, fanfare.length * 120);
+  },
   gameOver: () => {
     const notes = [400, 350, 300, 250];
     notes.forEach((freq, i) => {

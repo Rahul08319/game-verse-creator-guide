@@ -247,6 +247,7 @@ const Index = () => {
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
         setShowConfetti(true);
+        SoundManager.celebration();
         setTimeout(() => setShowConfetti(false), 3000);
       }
     }
