@@ -278,6 +278,11 @@ const drawComboText = (ctx: CanvasRenderingContext2D, comboText: ComboText) => {
   ctx.restore();
 };
 
+// Aim cursor particle trail system
+const aimTrailParticles: { x: number; y: number; alpha: number; radius: number; color: string; vx: number; vy: number }[] = [];
+let lastAimX = 0;
+let lastAimY = 0;
+
 const drawAimLine = (
   ctx: CanvasRenderingContext2D,
   position: { x: number; y: number },
@@ -287,7 +292,51 @@ const drawAimLine = (
   const lineLength = 120;
   const endX = position.x + Math.cos(angle) * lineLength;
   const endY = position.y + Math.sin(angle) * lineLength;
-  
+
+  // Add particles along the aim path
+  const cursorX = endX;
+  const cursorY = endY;
+  const dx = cursorX - lastAimX;
+  const dy = cursorY - lastAimY;
+  const moved = Math.sqrt(dx * dx + dy * dy);
+
+  if (moved > 1) {
+    const colors = ['#00FFFF', '#FF00FF', '#00FF41', '#FFFF00'];
+    for (let i = 0; i < 2; i++) {
+      aimTrailParticles.push({
+        x: cursorX + (Math.random() - 0.5) * 10,
+        y: cursorY + (Math.random() - 0.5) * 10,
+        alpha: 0.8,
+        radius: 2 + Math.random() * 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+      });
+    }
+    lastAimX = cursorX;
+    lastAimY = cursorY;
+  }
+
+  // Update and draw trail particles
+  for (let i = aimTrailParticles.length - 1; i >= 0; i--) {
+    const p = aimTrailParticles[i];
+    p.alpha -= 0.03;
+    p.radius *= 0.96;
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.alpha <= 0) { aimTrailParticles.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.restore();
+  }
+  while (aimTrailParticles.length > 50) aimTrailParticles.shift();
+
   ctx.save();
   ctx.shadowColor = '#00FFFF';
   ctx.shadowBlur = 10;
