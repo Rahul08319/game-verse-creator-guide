@@ -13,6 +13,7 @@ import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
 import MultiplayerResults from '../components/MultiplayerResults';
 import EmojiReactions from '../components/EmojiReactions';
 import ConfettiEffect from '../components/ConfettiEffect';
+import LevelUpOverlay from '../components/LevelUpOverlay';
 import StatsOverlay from '../components/StatsOverlay';
 import PowerUpIndicators from '../components/PowerUpIndicators';
 import ComboCounter from '../components/ComboCounter';
@@ -518,16 +519,7 @@ const Index = () => {
           </div>
         )}
 
-        {/* Level Up overlay */}
-        {showLevelUp && (
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-20 animate-scale-in">
-            <div className="text-center animate-bounce">
-              <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 mb-2">LEVEL UP!</h2>
-              <p className="text-xl text-yellow-300">Level {gameState.level + 1}</p>
-              <p className="text-sm text-gray-400 mt-2">Get ready...</p>
-            </div>
-          </div>
-        )}
+        {showLevelUp && <LevelUpOverlay level={gameState.level + 1} />}
 
         {/* Tutorial overlay */}
         {showTutorial && (
