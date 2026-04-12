@@ -15,6 +15,7 @@ import EmojiReactions from '../components/EmojiReactions';
 import ConfettiEffect from '../components/ConfettiEffect';
 import StatsOverlay from '../components/StatsOverlay';
 import PowerUpIndicators from '../components/PowerUpIndicators';
+import ComboCounter from '../components/ComboCounter';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -32,6 +33,7 @@ const Index = () => {
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isMusicOn, setIsMusicOn] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [highScores, setHighScores] = useState<HighScore[]>(() => getHighScores());
   const [playerName, setPlayerName] = useState('');
@@ -379,6 +381,8 @@ const Index = () => {
           </div>
 
           {/* Controls row */}
+          <ComboCounter combo={gameState.combo} />
+
           <PowerUpIndicators
             currentBubble={gameState.currentBubble ?? null}
             nextBubble={gameState.nextBubble ?? null}
@@ -395,6 +399,16 @@ const Index = () => {
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? '🔇' : '🔊'}
+              </button>
+              <button
+                onClick={() => {
+                  if (isMusicOn) { SoundManager.stopMusic(); } else { SoundManager.startMusic(); }
+                  setIsMusicOn(!isMusicOn);
+                }}
+                className={`w-7 h-7 flex items-center justify-center ${isMusicOn ? 'bg-purple-500/20 border-purple-500/30' : 'bg-white/10 border-white/10'} text-white rounded-lg text-xs hover:bg-purple-500/30 transition-all border`}
+                title={isMusicOn ? 'Stop Music' : 'Play Music'}
+              >
+                {isMusicOn ? '🎵' : '🎶'}
               </button>
               <button
                 onClick={async () => { setShowLeaderboard(!showLeaderboard); setHighScores(await getGlobalHighScores()); }}
