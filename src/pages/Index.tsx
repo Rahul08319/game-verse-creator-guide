@@ -14,6 +14,7 @@ import MultiplayerResults from '../components/MultiplayerResults';
 import EmojiReactions from '../components/EmojiReactions';
 import ConfettiEffect from '../components/ConfettiEffect';
 import StatsOverlay from '../components/StatsOverlay';
+import PowerUpIndicators from '../components/PowerUpIndicators';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -378,12 +379,15 @@ const Index = () => {
           </div>
 
           {/* Controls row */}
-          <div className="flex items-center justify-between mt-2 gap-2 flex-wrap">
-            <div className="flex gap-2 text-[10px]">
-              <span className="text-orange-400">💣</span>
-              <span className="text-cyan-400">❄️</span>
-              <span>🌈</span>
-            </div>
+          <PowerUpIndicators
+            currentBubble={gameState.currentBubble ?? null}
+            nextBubble={gameState.nextBubble ?? null}
+            isFrozen={gameState.isFrozen}
+            frozenTimer={gameState.frozenTimer}
+          />
+
+          {/* Controls row */}
+          <div className="flex items-center justify-end mt-2 gap-1 flex-wrap">
             <div className="flex gap-1 flex-wrap">
               <button
                 onClick={handleToggleMute}
