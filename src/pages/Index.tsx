@@ -33,6 +33,7 @@ const Index = () => {
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isMusicOn, setIsMusicOn] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [highScores, setHighScores] = useState<HighScore[]>(() => getHighScores());
   const [playerName, setPlayerName] = useState('');
