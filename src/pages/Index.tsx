@@ -381,6 +381,8 @@ const Index = () => {
           </div>
 
           {/* Controls row */}
+          <ComboCounter combo={gameState.combo} />
+
           <PowerUpIndicators
             currentBubble={gameState.currentBubble ?? null}
             nextBubble={gameState.nextBubble ?? null}
