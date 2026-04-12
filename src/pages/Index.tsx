@@ -14,6 +14,7 @@ import MultiplayerResults from '../components/MultiplayerResults';
 import EmojiReactions from '../components/EmojiReactions';
 import ConfettiEffect from '../components/ConfettiEffect';
 import StatsOverlay from '../components/StatsOverlay';
+import PowerUpIndicators from '../components/PowerUpIndicators';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
