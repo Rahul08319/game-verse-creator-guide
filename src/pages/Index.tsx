@@ -399,6 +399,16 @@ const Index = () => {
                 {isMuted ? '🔇' : '🔊'}
               </button>
               <button
+                onClick={() => {
+                  if (isMusicOn) { SoundManager.stopMusic(); } else { SoundManager.startMusic(); }
+                  setIsMusicOn(!isMusicOn);
+                }}
+                className={`w-7 h-7 flex items-center justify-center ${isMusicOn ? 'bg-purple-500/20 border-purple-500/30' : 'bg-white/10 border-white/10'} text-white rounded-lg text-xs hover:bg-purple-500/30 transition-all border`}
+                title={isMusicOn ? 'Stop Music' : 'Play Music'}
+              >
+                {isMusicOn ? '🎵' : '🎶'}
+              </button>
+              <button
                 onClick={async () => { setShowLeaderboard(!showLeaderboard); setHighScores(await getGlobalHighScores()); }}
                 className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
                 title="Leaderboard"
