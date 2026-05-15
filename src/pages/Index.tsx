@@ -161,6 +161,7 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
+    const initAudio = () => {
       SoundManager.init();
       SoundManager.setVolume(gameSettings.volume / 100);
       document.removeEventListener('click', initAudio);
