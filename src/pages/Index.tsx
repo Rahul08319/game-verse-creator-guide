@@ -310,7 +310,7 @@ const Index = () => {
     setMpTimeLeft(null);
     setShowMpResults(false);
     if (mpTimerRef.current) clearInterval(mpTimerRef.current);
-    setGameState(initializeGame());
+    setGameState(applyStreakReward(initializeGame()));
     setShowLevelUp(false);
     setShowNameInput(false);
   };
@@ -336,7 +336,7 @@ const Index = () => {
   const handleStartDaily = () => {
     setIsDailyMode(true);
     setShowDailyChallenge(false);
-    setGameState(initializeGame(1, 0, true));
+    setGameState(applyStreakReward(initializeGame(1, 0, true)));
     setShowLevelUp(false);
     setShowNameInput(false);
   };
@@ -404,6 +404,9 @@ const Index = () => {
         {/* Side/Top panel */}
         <div className={`flex flex-col overflow-y-auto ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
           <GameUI gameState={gameState} onRestart={handleRestart} onPause={handlePause} />
+          <div className="mt-1 flex justify-center">
+            <StreakBadge streak={streak} pendingPowerUp={pendingReward?.guaranteedPowerUp ?? null} />
+          </div>
 
           {isDailyMode && (
             <div className="mt-1 text-center">
