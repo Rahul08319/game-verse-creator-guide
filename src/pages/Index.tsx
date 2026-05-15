@@ -17,6 +17,9 @@ import LevelUpOverlay from '../components/LevelUpOverlay';
 import StatsOverlay from '../components/StatsOverlay';
 import PowerUpIndicators from '../components/PowerUpIndicators';
 import ComboCounter from '../components/ComboCounter';
+import StreakBadge from '../components/StreakBadge';
+import { toast } from 'sonner';
+import { checkInDailyStreak, consumePendingReward, peekPendingReward, getStreak, StreakReward } from '../utils/dailyStreak';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -60,6 +63,9 @@ const Index = () => {
     setTheme(s.theme);
     return s;
   });
+
+  const [streak, setStreak] = useState<number>(() => getStreak());
+  const [pendingReward, setPendingReward] = useState<StreakReward | null>(() => peekPendingReward());
 
   const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
   const [showMpResults, setShowMpResults] = useState(false);
