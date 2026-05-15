@@ -144,7 +144,14 @@ const Index = () => {
     } else if (result.started && result.streak === 1) {
       toast(`🔥 Daily streak started!`, { description: 'Come back tomorrow to keep it alive.' });
     }
+    // Apply any pending reward to the freshly initialized game state
+    if (peekPendingReward()) {
+      setGameState(prev => applyStreakRewardRef.current(prev));
+    }
   }, []);
+
+  // Ref so the mount effect can call the latest applyStreakReward
+  const applyStreakRewardRef = useRef<(s: GameState) => GameState>((s) => s);
 
   const applyStreakReward = useCallback((state: GameState): GameState => {
     const reward = consumePendingReward();
@@ -159,6 +166,7 @@ const Index = () => {
     });
     return next;
   }, []);
+  applyStreakRewardRef.current = applyStreakReward;
 
   useEffect(() => {
     const initAudio = () => {
