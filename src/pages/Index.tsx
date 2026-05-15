@@ -130,8 +130,37 @@ const Index = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // Daily streak check-in (runs once on mount)
   useEffect(() => {
-    const initAudio = () => {
+    const result = checkInDailyStreak();
+    setStreak(result.streak);
+    setPendingReward(peekPendingReward());
+    if (result.continued) {
+      toast.success(`🔥 Streak continued — Day ${result.streak}!`, {
+        description: result.reward
+          ? `${result.reward.milestoneLabel} +${result.reward.bonusPoints} bonus${result.reward.guaranteedPowerUp ? ` & guaranteed ${result.reward.guaranteedPowerUp}` : ''}`
+          : 'Keep it going tomorrow for bigger rewards.',
+      });
+    } else if (result.started && result.streak === 1) {
+      toast(`🔥 Daily streak started!`, { description: 'Come back tomorrow to keep it alive.' });
+    }
+  }, []);
+
+  const applyStreakReward = useCallback((state: GameState): GameState => {
+    const reward = consumePendingReward();
+    if (!reward) return state;
+    setPendingReward(null);
+    let next = { ...state, score: state.score + reward.bonusPoints };
+    if (reward.guaranteedPowerUp && next.currentBubble) {
+      next = { ...next, currentBubble: { ...next.currentBubble, powerUp: reward.guaranteedPowerUp } };
+    }
+    toast.success(`🎁 Streak Reward Applied`, {
+      description: `+${reward.bonusPoints} pts${reward.guaranteedPowerUp ? ` · ${reward.guaranteedPowerUp} power-up loaded` : ''}`,
+    });
+    return next;
+  }, []);
+
+  useEffect(() => {
       SoundManager.init();
       SoundManager.setVolume(gameSettings.volume / 100);
       document.removeEventListener('click', initAudio);
