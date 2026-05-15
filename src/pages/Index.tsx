@@ -17,6 +17,9 @@ import LevelUpOverlay from '../components/LevelUpOverlay';
 import StatsOverlay from '../components/StatsOverlay';
 import PowerUpIndicators from '../components/PowerUpIndicators';
 import ComboCounter from '../components/ComboCounter';
+import StreakBadge from '../components/StreakBadge';
+import { toast } from 'sonner';
+import { checkInDailyStreak, consumePendingReward, peekPendingReward, getStreak, StreakReward } from '../utils/dailyStreak';
 import { GameState } from '../types/gameTypes';
 import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
@@ -60,6 +63,9 @@ const Index = () => {
     setTheme(s.theme);
     return s;
   });
+
+  const [streak, setStreak] = useState<number>(() => getStreak());
+  const [pendingReward, setPendingReward] = useState<StreakReward | null>(() => peekPendingReward());
 
   const [mpTimeLeft, setMpTimeLeft] = useState<number | null>(null);
   const [showMpResults, setShowMpResults] = useState(false);
@@ -123,6 +129,44 @@ const Index = () => {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  // Daily streak check-in (runs once on mount)
+  useEffect(() => {
+    const result = checkInDailyStreak();
+    setStreak(result.streak);
+    setPendingReward(peekPendingReward());
+    if (result.continued) {
+      toast.success(`🔥 Streak continued — Day ${result.streak}!`, {
+        description: result.reward
+          ? `${result.reward.milestoneLabel} +${result.reward.bonusPoints} bonus${result.reward.guaranteedPowerUp ? ` & guaranteed ${result.reward.guaranteedPowerUp}` : ''}`
+          : 'Keep it going tomorrow for bigger rewards.',
+      });
+    } else if (result.started && result.streak === 1) {
+      toast(`🔥 Daily streak started!`, { description: 'Come back tomorrow to keep it alive.' });
+    }
+    // Apply any pending reward to the freshly initialized game state
+    if (peekPendingReward()) {
+      setGameState(prev => applyStreakRewardRef.current(prev));
+    }
+  }, []);
+
+  // Ref so the mount effect can call the latest applyStreakReward
+  const applyStreakRewardRef = useRef<(s: GameState) => GameState>((s) => s);
+
+  const applyStreakReward = useCallback((state: GameState): GameState => {
+    const reward = consumePendingReward();
+    if (!reward) return state;
+    setPendingReward(null);
+    let next = { ...state, score: state.score + reward.bonusPoints };
+    if (reward.guaranteedPowerUp && next.currentBubble) {
+      next = { ...next, currentBubble: { ...next.currentBubble, powerUp: reward.guaranteedPowerUp } };
+    }
+    toast.success(`🎁 Streak Reward Applied`, {
+      description: `+${reward.bonusPoints} pts${reward.guaranteedPowerUp ? ` · ${reward.guaranteedPowerUp} power-up loaded` : ''}`,
+    });
+    return next;
+  }, []);
+  applyStreakRewardRef.current = applyStreakReward;
 
   useEffect(() => {
     const initAudio = () => {
@@ -266,7 +310,7 @@ const Index = () => {
     setMpTimeLeft(null);
     setShowMpResults(false);
     if (mpTimerRef.current) clearInterval(mpTimerRef.current);
-    setGameState(initializeGame());
+    setGameState(applyStreakReward(initializeGame()));
     setShowLevelUp(false);
     setShowNameInput(false);
   };
@@ -292,7 +336,7 @@ const Index = () => {
   const handleStartDaily = () => {
     setIsDailyMode(true);
     setShowDailyChallenge(false);
-    setGameState(initializeGame(1, 0, true));
+    setGameState(applyStreakReward(initializeGame(1, 0, true)));
     setShowLevelUp(false);
     setShowNameInput(false);
   };
@@ -360,6 +404,9 @@ const Index = () => {
         {/* Side/Top panel */}
         <div className={`flex flex-col overflow-y-auto ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
           <GameUI gameState={gameState} onRestart={handleRestart} onPause={handlePause} />
+          <div className="mt-1 flex justify-center">
+            <StreakBadge streak={streak} pendingPowerUp={pendingReward?.guaranteedPowerUp ?? null} />
+          </div>
 
           {isDailyMode && (
             <div className="mt-1 text-center">
