@@ -121,7 +121,78 @@ const Index = () => {
       YouTubePlayables.firstFrameReady();
       YouTubePlayables.gameReady();
     }, 500);
+
+    // Load persisted game state (ytgame or localStorage fallback)
+    (async () => {
+      try {
+        const { loadGameState } = await import('../utils/ytgame-save');
+        const loaded = await loadGameState();
+        if (loaded) {
+          setGameState(loaded);
+        }
+      } catch (err) {
+        console.warn('Failed to load saved game state:', err);
+      }
+    })();
   }, []);
+
+  // Autosave and on-unload save
+  useEffect(() => {
+    let autosaveTimer: ReturnType<typeof setInterval> | null = null;
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { saveGameState } = await import('../utils/ytgame-save');
+
+        // Autosave every 5 seconds when mounted
+        autosaveTimer = setInterval(() => {
+          saveGameState(gameState).catch(() => {});
+        }, 5000);
+
+        const saveNow = () => { saveGameState(gameState).catch(() => {}); };
+
+        // Save on visibility change or page unload
+        const onVisibility = () => {
+          if (document.visibilityState === 'hidden') saveNow();
+        };
+        const onBeforeUnload = () => { saveNow(); };
+        document.addEventListener('visibilitychange', onVisibility);
+        window.addEventListener('beforeunload', onBeforeUnload);
+
+        // Also save when YouTube Playables signals a pause (tied to isPaused state)
+        // Note: isPaused effect below will trigger save when needed.
+
+        // cleanup
+        return () => {
+          mounted = false;
+          if (autosaveTimer) clearInterval(autosaveTimer);
+          document.removeEventListener('visibilitychange', onVisibility);
+          window.removeEventListener('beforeunload', onBeforeUnload);
+        };
+      } catch (err) {
+        console.warn('Autosave setup failed:', err);
+      }
+    })();
+
+    return () => {
+      if (autosaveTimer) clearInterval(autosaveTimer);
+    };
+  }, [gameState]);
+
+  // Save when paused/unpaused transitions (attempt immediate save on pause)
+  useEffect(() => {
+    (async () => {
+      if (gameState.isPaused) {
+        try {
+          const { saveGameState } = await import('../utils/ytgame-save');
+          await saveGameState(gameState);
+        } catch (err) {
+          // swallow
+        }
+      }
+    })();
+  }, [gameState.isPaused]);
 
   useEffect(() => {
     const check = () => setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
