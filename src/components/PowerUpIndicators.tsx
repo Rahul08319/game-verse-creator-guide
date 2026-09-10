@@ -38,6 +38,16 @@ const powerUps = [
     borderColor: 'border-pink-500/40',
     bgColor: 'bg-pink-500/10',
   },
+  {
+    id: 'nova',
+    icon: '✦',
+    label: 'Nova',
+    description: 'Clears one non-boss color family',
+    color: 'from-amber-300 via-orange-400 to-pink-500',
+    glowColor: 'shadow-amber-400/50',
+    borderColor: 'border-amber-300/40',
+    bgColor: 'bg-amber-300/10',
+  },
 ];
 
 const PowerUpIndicators = ({ currentBubble, nextBubble, isFrozen, frozenTimer }: PowerUpIndicatorsProps) => {
