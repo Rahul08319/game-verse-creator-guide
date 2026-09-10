@@ -5,7 +5,11 @@ const THEME_PALETTES = {
   neon: ['#FF0080', '#00FFFF', '#00FF41', '#FFFF00', '#FF00FF', '#FF6600', '#0080FF'],
   retro: ['#FF6600', '#FFFF00', '#00FF41', '#FF3333', '#CC66FF', '#33CCFF', '#FF9933'],
   ocean: ['#0080FF', '#00CCCC', '#6600FF', '#0066AA', '#33AADD', '#9966FF', '#00AAAA'],
+  aurora: ['#7DF9FF', '#B388FF', '#69F0AE', '#FF80AB', '#FFE57F', '#40C4FF', '#EA80FC'],
+  solar: ['#FF6B35', '#F7C948', '#FAD02E', '#FF8FAB', '#D65DB1', '#845EC2', '#4D8076'],
 };
+
+export type ThemeName = keyof typeof THEME_PALETTES;
 
 const COLOR_BLIND_PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#F0E442'];
 
@@ -13,13 +17,19 @@ const THEME_BACKGROUNDS = {
   neon: { top: '#0a0a1a', mid: '#1a0a2e', bottom: '#0a1a2e', glow1: 'rgba(255, 0, 128, 0.15)', glow2: 'rgba(0, 255, 255, 0.15)', grid: 'rgba(255, 0, 255, 0.05)' },
   retro: { top: '#1a1a0a', mid: '#2e1a0a', bottom: '#1a2e0a', glow1: 'rgba(255, 102, 0, 0.15)', glow2: 'rgba(255, 255, 0, 0.15)', grid: 'rgba(255, 153, 0, 0.05)' },
   ocean: { top: '#0a0a2e', mid: '#0a1a3e', bottom: '#0a2e3e', glow1: 'rgba(0, 128, 255, 0.15)', glow2: 'rgba(102, 0, 255, 0.15)', grid: 'rgba(0, 128, 255, 0.05)' },
+  aurora: { top: '#071b2e', mid: '#15265b', bottom: '#143d3b', glow1: 'rgba(125, 249, 255, 0.2)', glow2: 'rgba(179, 136, 255, 0.2)', grid: 'rgba(105, 240, 174, 0.08)' },
+  solar: { top: '#2b1027', mid: '#662642', bottom: '#2a1b4a', glow1: 'rgba(255, 107, 53, 0.22)', glow2: 'rgba(247, 201, 72, 0.18)', grid: 'rgba(255, 143, 171, 0.08)' },
 };
 
-let currentTheme: 'neon' | 'retro' | 'ocean' = 'neon';
+let currentTheme: ThemeName = 'neon';
 let colorBlindMode = false;
+export type ParticleStyle = 'spark' | 'stardust' | 'confetti';
+let particleStyle: ParticleStyle = 'spark';
 
-export const setTheme = (t: 'neon' | 'retro' | 'ocean') => { currentTheme = t; };
+export const setTheme = (t: ThemeName) => { currentTheme = t; };
 export const setColorBlindMode = (enabled: boolean) => { colorBlindMode = enabled; };
+export const setParticleStyle = (style: ParticleStyle) => { particleStyle = style; };
+export const getParticleStyle = () => particleStyle;
 export const getTheme = () => currentTheme;
 export const getThemeColors = () => colorBlindMode ? COLOR_BLIND_PALETTE : THEME_PALETTES[currentTheme];
 export const getThemeBackground = () => THEME_BACKGROUNDS[currentTheme];
@@ -43,6 +53,7 @@ interface LevelDef {
   powerUpChance: number;
   pattern: 'random' | 'striped' | 'checkerboard' | 'diamond' | 'fortress';
   targetScore: number;
+  boss?: { name: string; color: string };
 }
 
 const LEVELS: LevelDef[] = [
@@ -50,12 +61,12 @@ const LEVELS: LevelDef[] = [
   { rows: 5, colorsUsed: 4, powerUpChance: 0.08, pattern: 'striped', targetScore: 500 },
   { rows: 5, colorsUsed: 5, powerUpChance: 0.08, pattern: 'checkerboard', targetScore: 900 },
   { rows: 6, colorsUsed: 5, powerUpChance: 0.06, pattern: 'random', targetScore: 1400 },
-  { rows: 6, colorsUsed: 6, powerUpChance: 0.06, pattern: 'diamond', targetScore: 2000 },
+  { rows: 6, colorsUsed: 6, powerUpChance: 0.06, pattern: 'diamond', targetScore: 2000, boss: { name: 'Prism Warden', color: '#FFD166' } },
   { rows: 7, colorsUsed: 6, powerUpChance: 0.05, pattern: 'fortress', targetScore: 2800 },
   { rows: 7, colorsUsed: 7, powerUpChance: 0.05, pattern: 'striped', targetScore: 3800 },
   { rows: 8, colorsUsed: 7, powerUpChance: 0.04, pattern: 'checkerboard', targetScore: 5000 },
   { rows: 8, colorsUsed: 7, powerUpChance: 0.03, pattern: 'diamond', targetScore: 6500 },
-  { rows: 8, colorsUsed: 7, powerUpChance: 0.03, pattern: 'fortress', targetScore: 8500 },
+  { rows: 8, colorsUsed: 7, powerUpChance: 0.03, pattern: 'fortress', targetScore: 8500, boss: { name: 'Nova Sentinel', color: '#FF70D1' } },
 ];
 
 const getLevelDef = (level: number): LevelDef => {
@@ -71,6 +82,7 @@ const getLevelDef = (level: number): LevelDef => {
 };
 
 export const getTargetScore = (level: number): number => getLevelDef(level).targetScore;
+export const getBossForLevel = (level: number) => getLevelDef(level).boss;
 
 // Difficulty modifiers
 const DIFFICULTY_MODS = {
@@ -137,7 +149,13 @@ export const initializeGame = (level: number = 1, carryScore: number = 0, challe
     frozenTimer: 0,
     particles: [],
     comboTexts: [],
-    combo: 0
+    combo: 0,
+    shotsFired: 0,
+    successfulShots: 0,
+    adaptiveTier: 0,
+    isBossLevel: Boolean(getLevelDef(level).boss),
+    bossName: getLevelDef(level).boss?.name,
+    bossDefeated: false,
   };
 };
 
@@ -160,15 +178,17 @@ const generateLevelBubbles = (level: number): Bubble[] => {
 
       const color = getPatternColor(def.pattern, row, col, levelColors);
 
+      const boss = def.boss && row === Math.min(2, def.rows - 1) && col === Math.floor(colsInRow / 2);
       bubbles.push({
         id: `${row}-${col}`,
         position: { x, y },
-        color,
+        color: boss ? def.boss.color : color,
         radius: bubbleRadius,
         isFixed: true,
         row,
         col,
-        powerUp: null
+        powerUp: boss ? 'boss' : null,
+        isBoss: Boolean(boss)
       });
     }
   }
@@ -203,12 +223,12 @@ const getPatternColor = (pattern: string, row: number, col: number, colors: stri
 const createRandomBubble = (level: number = 1): Bubble => {
   const def = getLevelDef(level);
   const config = getGameConfig();
-  const levelColors = config.colors.slice(0, def.colorsUsed);
+  const levelColors = [...config.colors.slice(0, def.colorsUsed), ...(def.boss ? [def.boss.color] : [])];
   const { bubbleRadius, canvasWidth } = config;
 
   let powerUp: PowerUpType = null;
   if (getRandom() < def.powerUpChance) {
-    const powerUps: PowerUpType[] = ['bomb', 'rainbow', 'freeze'];
+    const powerUps: PowerUpType[] = ['bomb', 'rainbow', 'freeze', 'nova'];
     powerUp = powerUps[Math.floor(getRandom() * powerUps.length)];
   }
 
@@ -252,7 +272,9 @@ export const createComboParticles = (position: Position, color: string): Particl
       id: `combo-particle-${Date.now()}-${i}`,
       position: { ...position },
       velocity: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed - 2 },
-      color: ['#FFFF00', '#FF00FF', '#00FFFF'][Math.floor(Math.random() * 3)],
+      color: particleStyle === 'confetti'
+        ? ['#FF6B35', '#F7C948', '#69F0AE', '#40C4FF', '#EA80FC'][Math.floor(Math.random() * 5)]
+        : particleStyle === 'stardust' ? '#F7E7A9' : ['#FFFF00', '#FF00FF', '#00FFFF'][Math.floor(Math.random() * 3)],
       radius: 6 + Math.random() * 4,
       life: 50,
       maxLife: 50,
@@ -289,6 +311,37 @@ export const updateComboTexts = (comboTexts: ComboText[]): ComboText[] => {
   return comboTexts
     .map(t => ({ ...t, position: { ...t.position, y: t.position.y - 1 }, life: t.life - 1, scale: t.scale + 0.02 }))
     .filter(t => t.life > 0);
+};
+
+/**
+ * Adjusts the next shot from the player's live accuracy. A struggling player
+ * receives a colour-match assist and occasional power-up; a very accurate
+ * player receives a full-palette shot. This is intentionally gentle so the
+ * game never changes its selected difficulty setting behind their back.
+ */
+export const applyAdaptiveDifficulty = (previous: GameState, next: GameState): GameState => {
+  const shotsFired = (previous.shotsFired ?? 0) + 1;
+  const popped = Math.max(0, previous.bubbles.length - next.bubbles.length);
+  const successfulShots = (previous.successfulShots ?? 0) + (popped >= 3 ? 1 : 0);
+  const accuracy = successfulShots / shotsFired;
+  const adaptiveTier: -1 | 0 | 1 = shotsFired < 3 ? 0 : accuracy <= 0.33 ? -1 : accuracy >= 0.7 ? 1 : 0;
+  let nextBubble = next.nextBubble;
+
+  if (nextBubble && adaptiveTier === -1) {
+    const colorCounts = new Map<string, number>();
+    next.bubbles.forEach(bubble => colorCounts.set(bubble.color, (colorCounts.get(bubble.color) ?? 0) + 1));
+    const helpfulColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    nextBubble = {
+      ...nextBubble,
+      color: helpfulColor ?? nextBubble.color,
+      powerUp: nextBubble.powerUp ?? (shotsFired % 3 === 0 ? 'rainbow' : null),
+    };
+  } else if (nextBubble && adaptiveTier === 1) {
+    const colors = getThemeColors();
+    nextBubble = { ...nextBubble, color: colors[Math.floor(getRandom() * colors.length)], powerUp: null };
+  }
+
+  return { ...next, shotsFired, successfulShots, adaptiveTier, nextBubble };
 };
 
 export const updateGameState = (gameState: GameState, shootAngle: number): GameState => {
@@ -345,6 +398,28 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
           soundEvent: 'bomb' as const
         };
 
+      } else if (shootingBubble.powerUp === 'nova') {
+        const targetColor = [...newBubbles].sort((a, b) =>
+          newBubbles.filter(bubble => bubble.color === b.color).length - newBubbles.filter(bubble => bubble.color === a.color).length
+        )[0]?.color;
+        const affectedBubbles = newBubbles.filter(bubble => bubble.color === targetColor && !bubble.isBoss);
+        affectedBubbles.forEach(bubble => {
+          newParticles = [...newParticles, ...createExplosionParticles(bubble.position, '#F7C948', 10)];
+        });
+        const remainingBubbles = newBubbles.filter(bubble => !affectedBubbles.includes(bubble));
+        const connectedBubbles = findConnectedBubbles(remainingBubbles);
+        const finalBubbles = remainingBubbles.filter(bubble => connectedBubbles.has(bubble.id));
+        return {
+          ...gameState,
+          bubbles: finalBubbles,
+          currentBubble: gameState.nextBubble,
+          nextBubble: createRandomBubble(level),
+          score: gameState.score + affectedBubbles.length * 20,
+          particles: [...newParticles, ...createExplosionParticles(shootingBubble.position, '#FFFFFF', 28)],
+          comboTexts: newComboTexts,
+          soundEvent: 'nova' as const
+        };
+
       } else if (shootingBubble.powerUp === 'freeze') {
         isFrozen = true;
         frozenTimer = 180;
@@ -394,7 +469,8 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
         const baseScore = matchedBubbles.length * 10 + floatingBubbles.length * 5;
         score += Math.floor(baseScore * comboMultiplier);
 
-        soundEvent = newCombo >= 2 ? `combo-${newCombo}` : 'pop';
+        const bossDefeated = matchedBubbles.some(bubble => bubble.isBoss);
+        soundEvent = bossDefeated ? 'boss-defeated' : newCombo >= 2 ? `combo-${newCombo}` : 'pop';
 
         if (newCombo >= 2) {
           const centerPos = {
@@ -407,19 +483,23 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
 
         // Check level complete
         const levelDef = getLevelDef(level);
-        const levelComplete = finalBubbles.length === 0 || score >= levelDef.targetScore;
+        const levelComplete = levelDef.boss
+          ? bossDefeated
+          : finalBubbles.length === 0 || score >= levelDef.targetScore;
+        const comboReward: PowerUpType = newCombo === 3 ? 'bomb' : newCombo === 5 ? 'rainbow' : newCombo >= 7 && newCombo % 3 === 1 ? 'nova' : null;
 
         return {
           ...gameState,
           bubbles: finalBubbles,
           currentBubble: gameState.nextBubble,
-          nextBubble: createRandomBubble(level),
+          nextBubble: comboReward ? { ...createRandomBubble(level), powerUp: comboReward } : createRandomBubble(level),
           score,
           particles: newParticles,
           comboTexts: newComboTexts,
           combo: newCombo,
           soundEvent,
-          levelComplete
+          levelComplete,
+          bossDefeated: bossDefeated || gameState.bossDefeated
         };
       }
 
@@ -592,6 +672,10 @@ const findConnectedBubbles = (bubbles: Bubble[]): Set<string> => {
   topBubbles.forEach(b => {
     if (!connected.has(b.id)) bfs(b);
   });
+
+  // Boss cores are objectives, not floating debris. Keep them available until
+  // the player clears them with a matching shot.
+  bubbles.filter(b => b.isBoss).forEach(b => connected.add(b.id));
 
   return connected;
 };

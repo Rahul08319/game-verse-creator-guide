@@ -1,11 +1,14 @@
 
 import React, { useState } from 'react';
 import { Slider } from './ui/slider';
+import type { ParticleStyle, ThemeName } from '../utils/gameLogic';
+import { getCosmeticUnlocks, getNextCosmeticGoal } from '../utils/cosmetics';
 
 export interface GameSettings {
   difficulty: 'easy' | 'normal' | 'hard';
   volume: number; // 0-100
-  theme: 'neon' | 'retro' | 'ocean';
+  theme: ThemeName;
+  particleStyle: ParticleStyle;
   colorBlindMode: boolean;
   reduceMotion: boolean;
   hapticsEnabled: boolean;
@@ -19,6 +22,8 @@ interface SettingsOverlayProps {
 
 const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ settings, onSave, onClose }) => {
   const [local, setLocal] = useState<GameSettings>({ ...settings });
+  const unlocks = getCosmeticUnlocks();
+  const nextCosmeticGoal = getNextCosmeticGoal();
 
   const difficulties = [
     { key: 'easy' as const, label: 'Easy', desc: 'Fewer colors, more power-ups' },
@@ -30,6 +35,8 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ settings, onSave, onC
     { key: 'neon' as const, label: '🌌 Neon', colors: ['#FF0080', '#00FFFF', '#FF00FF'] },
     { key: 'retro' as const, label: '🕹️ Retro', colors: ['#FF6600', '#FFFF00', '#00FF41'] },
     { key: 'ocean' as const, label: '🌊 Ocean', colors: ['#0080FF', '#00CCCC', '#6600FF'] },
+    { key: 'aurora' as const, label: '🌌 Aurora', colors: ['#7DF9FF', '#B388FF', '#69F0AE'], unlock: 'Level 3' },
+    { key: 'solar' as const, label: '☀️ Solar', colors: ['#FF6B35', '#F7C948', '#D65DB1'], unlock: 'Level 5' },
   ];
 
   return (
@@ -93,14 +100,15 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ settings, onSave, onC
             {themes.map(t => (
               <button
                 key={t.key}
+                disabled={!unlocks.themes.includes(t.key)}
                 onClick={() => setLocal(s => ({ ...s, theme: t.key }))}
                 className={`flex-1 p-2.5 rounded-xl border text-center transition-all duration-200 ${
                   local.theme === t.key
                     ? 'bg-purple-500/20 border-purple-400/50 shadow-lg shadow-purple-500/10 scale-105'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    : unlocks.themes.includes(t.key) ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/[0.03] border-white/5 opacity-50 cursor-not-allowed'
                 }`}
               >
-                <div className="text-sm mb-1">{t.label}</div>
+                <div className="text-sm mb-1">{unlocks.themes.includes(t.key) ? t.label : `🔒 ${t.unlock}`}</div>
                 <div className="flex justify-center gap-1">
                   {t.colors.map((c, i) => (
                     <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: c, boxShadow: `0 0 6px ${c}` }} />
@@ -108,6 +116,24 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ settings, onSave, onC
                 </div>
               </button>
             ))}
+          </div>
+          {nextCosmeticGoal && <p className="text-[10px] text-cyan-300/80 mt-2">✨ {nextCosmeticGoal}</p>}
+        </div>
+
+        <div className="mb-5">
+          <h3 className="text-sm font-bold text-purple-300 mb-2 uppercase tracking-wider">Pop effect</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { key: 'spark', label: '✦ Spark' },
+              { key: 'stardust', label: '✧ Stardust', unlock: 'Level 3' },
+              { key: 'confetti', label: '🎉 Confetti', unlock: '5 runs' },
+            ] as const).map(effect => {
+              const unlocked = unlocks.particleStyles.includes(effect.key);
+              return <button key={effect.key} disabled={!unlocked} onClick={() => setLocal(s => ({ ...s, particleStyle: effect.key }))}
+                className={`p-2 rounded-xl border text-[10px] font-semibold ${local.particleStyle === effect.key ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200' : unlocked ? 'bg-white/5 border-white/10 text-white' : 'bg-white/[0.03] border-white/5 text-gray-500 cursor-not-allowed'}`}>
+                {unlocked ? effect.label : `🔒 ${effect.unlock}`}
+              </button>;
+            })}
           </div>
         </div>
 

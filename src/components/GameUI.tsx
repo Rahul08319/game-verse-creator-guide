@@ -20,6 +20,14 @@ const GameUI: React.FC<GameUIProps> = ({ gameState, onRestart, onPause }) => {
       
       <div className="text-center">
         <div className="text-lg font-bold text-purple-400">Level {gameState.level}</div>
+        {gameState.isBossLevel && !gameState.bossDefeated && (
+          <div className="text-[10px] font-bold text-amber-300 animate-pulse">♛ {gameState.bossName}</div>
+        )}
+        {gameState.adaptiveTier !== 0 && (
+          <div className={`text-[9px] ${gameState.adaptiveTier < 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+            {gameState.adaptiveTier < 0 ? '✦ Match assist active' : '⚡ Challenge pace'}
+          </div>
+        )}
         <div className="flex gap-1 justify-center mt-1">
           {Array.from({ length: 3 }).map((_, i) => (
             <div

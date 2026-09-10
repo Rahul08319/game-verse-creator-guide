@@ -15,3 +15,12 @@ Original prompt: Add all YouTube Playables SDK requirements from the pasted refe
 - Added a release preflight (`npm run check:playables`) that checks the production bundle for YouTube's documented file-count, initial-load, total-size, individual-file-size, and safe-filename limits. The latest pass reports 22 files, 0.64 MiB initial load, and 0.77 MiB total output.
 - Visually inspected the current browser gameplay screenshot at 350x500: the board, shooter, aiming guide, next-bubble preview, and responsive portrait layout render cleanly. The automated pass after the canvas-input fix completed without page errors; the only console error remains the local sandbox blocking the external YouTube SDK URL.
 - Replaced the starter README with a polished project README covering the game, controls, accessibility, Playables integration, local validation, and non-monetization roadmap.
+
+Original follow-up prompt: Add adaptive difficulty, combo streak special bubbles, boss puzzle levels, local weekly ghosts, and unlockable themes/particle effects.
+
+- Added a gentle accuracy-based adaptive layer: players who are struggling receive a colour-match/power-up assist, while highly accurate players receive full-palette challenge shots. The selected difficulty remains unchanged.
+- Added combo rewards (bomb, rainbow, then nova) and a Nova bubble that clears a whole non-boss colour family with a distinct visual burst.
+- Added boss puzzle cores to Levels 5 and 10, with dedicated artwork and a boss-clear win condition.
+- Added local-only weekly ghost recording and a live pace card for racing the player’s best weekly attempt.
+- Added local progression unlocks: Aurora/Stardust at Level 3, Solar at Level 5, and Confetti after five completed runs. Settings visibly show locked cosmetics and their next goal.
+- Browser gameplay validation rendered the updated board and Nova preview; its text state reported the expected adaptive fields and no new page errors. Final Playables preflight passed with 23 files, 0.65 MiB initial load, and 0.78 MiB total output.

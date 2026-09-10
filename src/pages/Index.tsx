@@ -11,11 +11,12 @@ import StreakBadge from '../components/StreakBadge';
 import { toast } from 'sonner';
 import { checkInDailyStreak, consumePendingReward, peekPendingReward, getStreak, StreakReward } from '../utils/dailyStreak';
 import { GameState } from '../types/gameTypes';
-import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme, setColorBlindMode } from '../utils/gameLogic';
+import { initializeGame, updateGameState, applyAdaptiveDifficulty, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme, setColorBlindMode, setParticleStyle } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
 import { getHighScores, getGlobalHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 import { saveDailyResult } from '../utils/dailyChallenge';
 import { saveWeeklyResult } from '../utils/weeklyChallenge';
+import { getWeeklyGhost, saveWeeklyGhost, type GhostShot, type WeeklyGhostRun } from '../utils/weeklyGhost';
 import { recordShot, recordCompletedGame } from '../utils/playerProgress';
 import { checkAchievements } from '../utils/achievements';
 import type { Achievement } from '../utils/achievements';
@@ -36,6 +37,7 @@ const ConfettiEffect = lazy(() => import('../components/ConfettiEffect'));
 const LevelUpOverlay = lazy(() => import('../components/LevelUpOverlay'));
 const StatsOverlay = lazy(() => import('../components/StatsOverlay'));
 const WeeklyChallengeOverlay = lazy(() => import('../components/WeeklyChallengeOverlay'));
+const WeeklyGhostPace = lazy(() => import('../components/WeeklyGhostPace'));
 
 interface PlayablesSave {
   version: 1;
@@ -93,11 +95,12 @@ const Index = () => {
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('bubble-pop-settings');
     const s: GameSettings = saved
-      ? { colorBlindMode: false, reduceMotion: false, hapticsEnabled: true, ...JSON.parse(saved) }
-      : { difficulty: 'normal', volume: 80, theme: 'neon', colorBlindMode: false, reduceMotion: false, hapticsEnabled: true };
+      ? { colorBlindMode: false, reduceMotion: false, hapticsEnabled: true, particleStyle: 'spark', ...JSON.parse(saved) }
+      : { difficulty: 'normal', volume: 80, theme: 'neon', particleStyle: 'spark', colorBlindMode: false, reduceMotion: false, hapticsEnabled: true };
     setDifficulty(s.difficulty);
     setTheme(s.theme);
     setColorBlindMode(s.colorBlindMode);
+    setParticleStyle(s.particleStyle);
     Haptics.setEnabled(s.hapticsEnabled);
     return s;
   });
@@ -109,12 +112,15 @@ const Index = () => {
   const [showMpResults, setShowMpResults] = useState(false);
   const [rematchLoading, setRematchLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [weeklyGhost, setWeeklyGhost] = useState<WeeklyGhostRun | null>(() => getWeeklyGhost());
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
   const gameStateRef = useRef(gameState);
   const gameSettingsRef = useRef(gameSettings);
   const highScoresRef = useRef(highScores);
   const isDailyModeRef = useRef(isDailyMode);
   const isWeeklyModeRef = useRef(isWeeklyMode);
+  const weeklyRunStartedAtRef = useRef<number>(0);
+  const weeklyShotLogRef = useRef<GhostShot[]>([]);
 
   const MATCH_DURATION = 120; // seconds
 
@@ -203,12 +209,13 @@ const Index = () => {
       if (!mounted || !saved || saved.version !== 1) return;
 
       if (saved.settings) {
-        const restoredSettings: GameSettings = { colorBlindMode: false, reduceMotion: false, hapticsEnabled: true, ...saved.settings };
+        const restoredSettings: GameSettings = { colorBlindMode: false, reduceMotion: false, hapticsEnabled: true, particleStyle: 'spark', ...saved.settings };
         localStorage.setItem('bubble-pop-settings', JSON.stringify(restoredSettings));
         setGameSettings(restoredSettings);
         setDifficulty(restoredSettings.difficulty);
         setTheme(restoredSettings.theme);
         setColorBlindMode(restoredSettings.colorBlindMode);
+        setParticleStyle(restoredSettings.particleStyle);
         Haptics.setEnabled(restoredSettings.hapticsEnabled);
         SoundManager.setVolume(restoredSettings.volume / 100);
       }
@@ -252,6 +259,9 @@ const Index = () => {
         level: state.level,
         lives: state.lives,
         combo: state.combo,
+        adaptiveTier: state.adaptiveTier,
+        accuracy: state.shotsFired ? Math.round((state.successfulShots / state.shotsFired) * 100) : 0,
+        boss: state.isBossLevel ? { name: state.bossName, defeated: state.bossDefeated } : null,
         currentBubble: state.currentBubble ? { color: state.currentBubble.color, powerUp: state.currentBubble.powerUp } : null,
         nextBubble: state.nextBubble ? { color: state.nextBubble.color, powerUp: state.nextBubble.powerUp } : null,
         bubbles: state.bubbles.map((bubble) => ({ x: bubble.position.x, y: bubble.position.y, color: bubble.color, powerUp: bubble.powerUp })),
@@ -396,8 +406,11 @@ const Index = () => {
     if (gameState.isGameOver || gameState.isPaused || !gameState.currentBubble) return;
     SoundManager.shoot();
     Haptics.shoot();
-    const newState = updateGameState(gameState, angle);
+    let newState = applyAdaptiveDifficulty(gameState, updateGameState(gameState, angle));
     recordShot(gameState.bubbles.length - newState.bubbles.length);
+    if (isWeeklyMode && weeklyRunStartedAtRef.current) {
+      weeklyShotLogRef.current.push({ angle, elapsedMs: Date.now() - weeklyRunStartedAtRef.current });
+    }
 
     if (newState.soundEvent) {
       const evt = newState.soundEvent;
@@ -408,6 +421,8 @@ const Index = () => {
       }
       else if (evt === 'freeze') SoundManager.freeze();
       else if (evt === 'rainbow') SoundManager.rainbow();
+      else if (evt === 'nova') { SoundManager.bomb(); Haptics.explosion(); triggerScreenShake(14, 450); }
+      else if (evt === 'boss-defeated') { SoundManager.levelUp(); Haptics.levelUp(); triggerScreenShake(16, 550); }
       else if (evt === 'pop') { SoundManager.multiPop(3); Haptics.pop(); }
       else if (evt.startsWith('combo-')) {
         const comboLevel = parseInt(evt.split('-')[1]);
@@ -456,6 +471,10 @@ const Index = () => {
       }
       if (isWeeklyMode) saveWeeklyResult(newState.score, newState.level);
       recordCompletedGame(newState.score, newState.level, isWeeklyMode ? 'weekly' : isDailyMode ? 'daily' : 'normal');
+      if (isWeeklyMode && weeklyRunStartedAtRef.current) {
+        const savedGhost = saveWeeklyGhost({ score: newState.score, level: newState.level, durationMs: Date.now() - weeklyRunStartedAtRef.current, shots: weeklyShotLogRef.current });
+        if (savedGhost) setWeeklyGhost(getWeeklyGhost());
+      }
       queueAchievements(finalState, undefined);
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
@@ -510,6 +529,9 @@ const Index = () => {
     setIsDailyMode(false);
     setIsWeeklyMode(true);
     setShowWeeklyChallenge(false);
+    weeklyRunStartedAtRef.current = Date.now();
+    weeklyShotLogRef.current = [];
+    setWeeklyGhost(getWeeklyGhost());
     setGameState(applyStreakReward(initializeGame(1, 0, 'weekly')));
     setShowLevelUp(false);
     setShowNameInput(false);
@@ -532,6 +554,7 @@ const Index = () => {
     setDifficulty(s.difficulty);
     setTheme(s.theme);
     setColorBlindMode(s.colorBlindMode);
+    setParticleStyle(s.particleStyle);
     Haptics.setEnabled(s.hapticsEnabled);
     SoundManager.setVolume(s.volume / 100);
     setShowSettings(false);
@@ -711,6 +734,9 @@ const Index = () => {
             onAimChange={setAimAngle}
             onAimingChange={() => {}}
           />
+          {isWeeklyMode && weeklyGhost && weeklyRunStartedAtRef.current > 0 && (
+            <WeeklyGhostPace ghost={weeklyGhost} elapsedMs={Date.now() - weeklyRunStartedAtRef.current} score={gameState.score} />
+          )}
           {/* Multiplayer live scoreboard */}
           {mpSession && mpPlayers.length > 0 && (
             <MultiplayerScoreboard players={mpPlayers} timeLeft={mpTimeLeft} />

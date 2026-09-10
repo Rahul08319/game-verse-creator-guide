@@ -4,7 +4,7 @@ export interface Position {
   y: number;
 }
 
-export type PowerUpType = 'bomb' | 'rainbow' | 'freeze' | null;
+export type PowerUpType = 'bomb' | 'rainbow' | 'freeze' | 'nova' | 'boss' | null;
 
 export interface Bubble {
   id: string;
@@ -15,6 +15,7 @@ export interface Bubble {
   row: number;
   col: number;
   powerUp?: PowerUpType;
+  isBoss?: boolean;
 }
 
 export interface Particle {
@@ -50,6 +51,12 @@ export interface GameState {
   particles: Particle[];
   comboTexts: ComboText[];
   combo: number;
+  shotsFired: number;
+  successfulShots: number;
+  adaptiveTier: -1 | 0 | 1;
+  isBossLevel: boolean;
+  bossName?: string;
+  bossDefeated?: boolean;
   soundEvent?: string;
   levelComplete?: boolean;
 }

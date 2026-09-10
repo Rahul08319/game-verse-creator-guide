@@ -1,6 +1,6 @@
 
 import { GameState, GameConfig, Bubble, Particle, ComboText } from '../types/gameTypes';
-import { wallBouncePositions, getThemeBackground } from './gameLogic';
+import { wallBouncePositions, getThemeBackground, getParticleStyle } from './gameLogic';
 
 const GAME_CONFIG: GameConfig = {
   canvasWidth: 350,
@@ -131,7 +131,39 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
   
   ctx.save();
   
-  if (bubble.powerUp === 'bomb') {
+  if (bubble.powerUp === 'boss') {
+    ctx.shadowColor = bubble.color;
+    ctx.shadowBlur = 28 + Math.sin(Date.now() * 0.006) * 8;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 1.08, 0, Math.PI * 2);
+    const bossGradient = ctx.createRadialGradient(x - 5, y - 5, 0, x, y, radius * 1.1);
+    bossGradient.addColorStop(0, '#FFF7D6');
+    bossGradient.addColorStop(0.5, bubble.color);
+    bossGradient.addColorStop(1, '#8D2A8F');
+    ctx.fillStyle = bossGradient;
+    ctx.fill();
+    ctx.fillStyle = '#27123B';
+    ctx.font = `bold ${radius}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('♛', x, y + 1);
+  } else if (bubble.powerUp === 'nova') {
+    ctx.shadowColor = '#F7C948';
+    ctx.shadowBlur = 30;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    const novaGradient = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, radius);
+    novaGradient.addColorStop(0, '#FFFFFF');
+    novaGradient.addColorStop(0.4, '#F7E7A9');
+    novaGradient.addColorStop(1, '#FF7A00');
+    ctx.fillStyle = novaGradient;
+    ctx.fill();
+    ctx.fillStyle = '#7A1B58';
+    ctx.font = `bold ${radius * 0.9}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✦', x, y);
+  } else if (bubble.powerUp === 'bomb') {
     const pulseIntensity = 20 + Math.sin(Date.now() * 0.01) * 10;
     ctx.shadowColor = '#FF4500';
     ctx.shadowBlur = pulseIntensity;
@@ -236,9 +268,17 @@ const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
   } else if (particle.type === 'combo') {
     ctx.shadowColor = particle.color;
     ctx.shadowBlur = 15;
-    drawStar(ctx, particle.position.x, particle.position.y, 5, particle.radius * alpha, particle.radius * 0.5 * alpha);
-    ctx.fillStyle = particle.color;
-    ctx.fill();
+    const style = getParticleStyle();
+    if (style === 'confetti') {
+      ctx.translate(particle.position.x, particle.position.y);
+      ctx.rotate(particle.life * 0.15);
+      ctx.fillStyle = particle.color;
+      ctx.fillRect(-particle.radius * alpha, -particle.radius * alpha * 0.4, particle.radius * 2 * alpha, particle.radius * 0.8 * alpha);
+    } else {
+      drawStar(ctx, particle.position.x, particle.position.y, style === 'stardust' ? 4 : 5, particle.radius * alpha, particle.radius * 0.5 * alpha);
+      ctx.fillStyle = particle.color;
+      ctx.fill();
+    }
   }
   ctx.restore();
 };
