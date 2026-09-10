@@ -6,6 +6,9 @@ export interface GameSettings {
   difficulty: 'easy' | 'normal' | 'hard';
   volume: number; // 0-100
   theme: 'neon' | 'retro' | 'ocean';
+  colorBlindMode: boolean;
+  reduceMotion: boolean;
+  hapticsEnabled: boolean;
 }
 
 interface SettingsOverlayProps {
@@ -106,6 +109,31 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ settings, onSave, onC
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-2 mb-5">
+          <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider">Accessibility</h3>
+          <button
+            onClick={() => setLocal(s => ({ ...s, colorBlindMode: !s.colorBlindMode }))}
+            className={`w-full flex items-center justify-between p-3 rounded-xl border text-left ${local.colorBlindMode ? 'bg-cyan-500/15 border-cyan-400/40' : 'bg-white/5 border-white/10'}`}
+          >
+            <span><span className="text-sm font-semibold text-white">Color-blind palette</span><span className="block text-[10px] text-gray-400">High-contrast blue, orange, green, and purple bubbles</span></span>
+            <span className="text-lg">{local.colorBlindMode ? '✓' : '○'}</span>
+          </button>
+          <button
+            onClick={() => setLocal(s => ({ ...s, reduceMotion: !s.reduceMotion }))}
+            className={`w-full flex items-center justify-between p-3 rounded-xl border text-left ${local.reduceMotion ? 'bg-cyan-500/15 border-cyan-400/40' : 'bg-white/5 border-white/10'}`}
+          >
+            <span><span className="text-sm font-semibold text-white">Reduce motion</span><span className="block text-[10px] text-gray-400">Limits animations, shake, and visual movement</span></span>
+            <span className="text-lg">{local.reduceMotion ? '✓' : '○'}</span>
+          </button>
+          <button
+            onClick={() => setLocal(s => ({ ...s, hapticsEnabled: !s.hapticsEnabled }))}
+            className={`w-full flex items-center justify-between p-3 rounded-xl border text-left ${local.hapticsEnabled ? 'bg-cyan-500/15 border-cyan-400/40' : 'bg-white/5 border-white/10'}`}
+          >
+            <span><span className="text-sm font-semibold text-white">Haptic feedback</span><span className="block text-[10px] text-gray-400">Vibration for pops, combos, and milestones</span></span>
+            <span className="text-lg">{local.hapticsEnabled ? '✓' : '○'}</span>
+          </button>
         </div>
 
         <button

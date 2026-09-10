@@ -33,8 +33,11 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
     if (!ctx) return;
 
     const config = getCanvasConfig();
-    canvas.width = config.canvasWidth;
-    canvas.height = config.canvasHeight;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = config.canvasWidth * pixelRatio;
+    canvas.height = config.canvasHeight * pixelRatio;
+    canvas.style.aspectRatio = `${config.canvasWidth} / ${config.canvasHeight}`;
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
     const animate = () => {
       ctx.save();
@@ -59,11 +62,10 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
     const config = getCanvasConfig();
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * (config.canvasWidth / rect.width);
+    const y = (event.clientY - rect.top) * (config.canvasHeight / rect.height);
     const shooterX = config.canvasWidth / 2;
     const shooterY = config.canvasHeight - 30;
 
@@ -87,12 +89,11 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
     const canvas = canvasRef.current;
     if (!canvas || event.touches.length === 0) return;
 
+    const config = getCanvasConfig();
     const rect = canvas.getBoundingClientRect();
     const touch = event.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-
-    const config = getCanvasConfig();
+    const x = (touch.clientX - rect.left) * (config.canvasWidth / rect.width);
+    const y = (touch.clientY - rect.top) * (config.canvasHeight / rect.height);
     const shooterX = config.canvasWidth / 2;
     const shooterY = config.canvasHeight - 30;
 
@@ -116,7 +117,7 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
       onClick={handleClick}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ maxWidth: '100%', height: 'auto' }}
+      style={{ width: 'min(100%, 560px)', maxHeight: '100%', height: 'auto' }}
     />
   );
 });

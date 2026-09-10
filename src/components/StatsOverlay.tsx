@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { getHighScores, HighScore } from '../utils/highScores';
+import { getPlayerProgress } from '../utils/playerProgress';
 
 interface StatsOverlayProps {
   onClose: () => void;
@@ -8,16 +9,18 @@ interface StatsOverlayProps {
 
 const StatsOverlay = ({ onClose }: StatsOverlayProps) => {
   const [scores, setScores] = useState<HighScore[]>([]);
+  const [progress, setProgress] = useState(getPlayerProgress());
 
   useEffect(() => {
     setScores(getHighScores());
+    setProgress(getPlayerProgress());
   }, []);
 
-  const totalGames = scores.length;
-  const avgScore = totalGames > 0 ? Math.round(scores.reduce((s, h) => s + h.score, 0) / totalGames) : 0;
-  const bestScore = totalGames > 0 ? Math.max(...scores.map(s => s.score)) : 0;
-  const bestLevel = totalGames > 0 ? Math.max(...scores.map(s => s.level)) : 0;
-  const avgLevel = totalGames > 0 ? (scores.reduce((s, h) => s + h.level, 0) / totalGames).toFixed(1) : '0';
+  const totalGames = progress.gamesPlayed;
+  const avgScore = totalGames > 0 ? Math.round(progress.totalScore / totalGames) : 0;
+  const bestScore = progress.bestScore;
+  const bestLevel = progress.bestLevel;
+  const avgLevel = totalGames > 0 ? (scores.reduce((s, h) => s + h.level, 0) / Math.max(scores.length, 1)).toFixed(1) : '0';
 
   // Calculate best streak (consecutive games with increasing scores)
   let bestStreak = 0;
@@ -58,6 +61,8 @@ const StatsOverlay = ({ onClose }: StatsOverlayProps) => {
                 { label: 'Avg Level', value: avgLevel, icon: '📊', color: 'from-green-500/20 to-emerald-500/20 border-green-500/20' },
                 { label: 'Games Played', value: totalGames, icon: '🎮', color: 'from-pink-500/20 to-red-500/20 border-pink-500/20' },
                 { label: 'Best Streak', value: bestStreak, icon: '🔥', color: 'from-orange-500/20 to-red-500/20 border-orange-500/20' },
+                { label: 'Bubbles Popped', value: progress.bubblesPopped, icon: '🫧', color: 'from-blue-500/20 to-cyan-500/20 border-blue-500/20' },
+                { label: 'Weekly Runs', value: progress.weeklyRuns, icon: '🗓️', color: 'from-violet-500/20 to-purple-500/20 border-violet-500/20' },
               ].map((stat) => (
                 <div key={stat.label} className={`bg-gradient-to-br ${stat.color} border rounded-xl p-2.5 text-center`}>
                   <div className="text-lg">{stat.icon}</div>

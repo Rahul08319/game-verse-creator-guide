@@ -1,39 +1,71 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
-import TutorialOverlay from '../components/TutorialOverlay';
-import SettingsOverlay, { GameSettings } from '../components/SettingsOverlay';
-import DailyChallengeOverlay from '../components/DailyChallengeOverlay';
-import AchievementToast from '../components/AchievementToast';
-import AchievementsOverlay from '../components/AchievementsOverlay';
-import MultiplayerOverlay from '../components/MultiplayerOverlay';
-import MultiplayerScoreboard from '../components/MultiplayerScoreboard';
-import MultiplayerResults from '../components/MultiplayerResults';
+import type { GameSettings } from '../components/SettingsOverlay';
 import EmojiReactions from '../components/EmojiReactions';
-import ConfettiEffect from '../components/ConfettiEffect';
-import LevelUpOverlay from '../components/LevelUpOverlay';
-import StatsOverlay from '../components/StatsOverlay';
 import PowerUpIndicators from '../components/PowerUpIndicators';
 import ComboCounter from '../components/ComboCounter';
 import StreakBadge from '../components/StreakBadge';
 import { toast } from 'sonner';
 import { checkInDailyStreak, consumePendingReward, peekPendingReward, getStreak, StreakReward } from '../utils/dailyStreak';
 import { GameState } from '../types/gameTypes';
-import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme } from '../utils/gameLogic';
+import { initializeGame, updateGameState, checkGameOver, updateParticles, updateComboTexts, getTargetScore, setDifficulty, setTheme, setColorBlindMode } from '../utils/gameLogic';
 import { SoundManager } from '../utils/soundManager';
 import { getHighScores, getGlobalHighScores, saveHighScore, isHighScore, HighScore } from '../utils/highScores';
 import { saveDailyResult } from '../utils/dailyChallenge';
-import { checkAchievements, Achievement } from '../utils/achievements';
+import { saveWeeklyResult } from '../utils/weeklyChallenge';
+import { recordShot, recordCompletedGame } from '../utils/playerProgress';
+import { checkAchievements } from '../utils/achievements';
+import type { Achievement } from '../utils/achievements';
 import { YouTubePlayables } from '../utils/youtubePlayables';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
 import { Haptics } from '../utils/haptics';
 import { shareScore, getAvatarColor, getInitials } from '../utils/social';
 
+const TutorialOverlay = lazy(() => import('../components/TutorialOverlay'));
+const SettingsOverlay = lazy(() => import('../components/SettingsOverlay'));
+const DailyChallengeOverlay = lazy(() => import('../components/DailyChallengeOverlay'));
+const AchievementToast = lazy(() => import('../components/AchievementToast'));
+const AchievementsOverlay = lazy(() => import('../components/AchievementsOverlay'));
+const MultiplayerOverlay = lazy(() => import('../components/MultiplayerOverlay'));
+const MultiplayerScoreboard = lazy(() => import('../components/MultiplayerScoreboard'));
+const MultiplayerResults = lazy(() => import('../components/MultiplayerResults'));
+const ConfettiEffect = lazy(() => import('../components/ConfettiEffect'));
+const LevelUpOverlay = lazy(() => import('../components/LevelUpOverlay'));
+const StatsOverlay = lazy(() => import('../components/StatsOverlay'));
+const WeeklyChallengeOverlay = lazy(() => import('../components/WeeklyChallengeOverlay'));
+
+interface PlayablesSave {
+  version: 1;
+  gameState?: GameState;
+  isDailyMode?: boolean;
+  isWeeklyMode?: boolean;
+  settings?: GameSettings;
+  highScores?: HighScore[];
+  tutorialSeen?: boolean;
+}
+
+declare global {
+  interface Window {
+    render_game_to_text?: () => string;
+    advanceTime?: (ms: number) => Promise<void>;
+  }
+}
+
+const isRestorableGameState = (value: unknown): value is GameState => {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as Partial<GameState>;
+  return Array.isArray(state.bubbles) && typeof state.score === 'number' &&
+    typeof state.level === 'number' && typeof state.lives === 'number';
+};
+
 const Index = () => {
   const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>(() => initializeGame());
+  const [isYouTubePlayable, setIsYouTubePlayable] = useState(false);
+  const [isPlatformAudioEnabled, setIsPlatformAudioEnabled] = useState(true);
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -48,8 +80,10 @@ const Index = () => {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showDailyChallenge, setShowDailyChallenge] = useState(false);
+  const [showWeeklyChallenge, setShowWeeklyChallenge] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [isDailyMode, setIsDailyMode] = useState(false);
+  const [isWeeklyMode, setIsWeeklyMode] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
   const [showMultiplayer, setShowMultiplayer] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -58,9 +92,13 @@ const Index = () => {
   const [mpPlayers, setMpPlayers] = useState<MultiplayerPlayer[]>([]);
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('bubble-pop-settings');
-    const s = saved ? JSON.parse(saved) : { difficulty: 'normal', volume: 80, theme: 'neon' };
+    const s: GameSettings = saved
+      ? { colorBlindMode: false, reduceMotion: false, hapticsEnabled: true, ...JSON.parse(saved) }
+      : { difficulty: 'normal', volume: 80, theme: 'neon', colorBlindMode: false, reduceMotion: false, hapticsEnabled: true };
     setDifficulty(s.difficulty);
     setTheme(s.theme);
+    setColorBlindMode(s.colorBlindMode);
+    Haptics.setEnabled(s.hapticsEnabled);
     return s;
   });
 
@@ -72,15 +110,46 @@ const Index = () => {
   const [rematchLoading, setRematchLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const gameStateRef = useRef(gameState);
+  const gameSettingsRef = useRef(gameSettings);
+  const highScoresRef = useRef(highScores);
+  const isDailyModeRef = useRef(isDailyMode);
+  const isWeeklyModeRef = useRef(isWeeklyMode);
 
   const MATCH_DURATION = 120; // seconds
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameShellRef = useRef<HTMLDivElement>(null);
   const [aimAngle, setAimAngle] = useState(-Math.PI / 2);
   const gameLoopRef = useRef<number>();
   const shakeRef = useRef<number>();
 
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { gameSettingsRef.current = gameSettings; }, [gameSettings]);
+  useEffect(() => { highScoresRef.current = highScores; }, [highScores]);
+  useEffect(() => { isDailyModeRef.current = isDailyMode; }, [isDailyMode]);
+  useEffect(() => { isWeeklyModeRef.current = isWeeklyMode; }, [isWeeklyMode]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', gameSettings.reduceMotion);
+    return () => document.documentElement.classList.remove('reduce-motion');
+  }, [gameSettings.reduceMotion]);
+
+  const getPlayablesSave = useCallback((): PlayablesSave => {
+    const game = gameStateRef.current;
+    return {
+      version: 1,
+      gameState: { ...game, isPaused: false, particles: [], comboTexts: [], soundEvent: undefined, levelComplete: false },
+      isDailyMode: isDailyModeRef.current,
+      isWeeklyMode: isWeeklyModeRef.current,
+      settings: gameSettingsRef.current,
+      highScores: highScoresRef.current,
+      tutorialSeen: Boolean(localStorage.getItem('bubble-pop-tutorial-seen')),
+    };
+  }, []);
+
   const triggerScreenShake = useCallback((intensity: number = 8, duration: number = 300) => {
+    if (gameSettings.reduceMotion) return;
     const startTime = Date.now();
     const shake = () => {
       const elapsed = Date.now() - startTime;
@@ -105,29 +174,119 @@ const Index = () => {
       score: newState.score,
       bubblesLeft: newState.bubbles.length,
       isDailyMode,
+      isWeeklyMode,
       isGameOver: newState.isGameOver,
     });
     if (newlyUnlocked.length > 0) {
       setAchievementQueue(prev => [...prev, ...newlyUnlocked]);
     }
-  }, [isDailyMode]);
+  }, [isDailyMode, isWeeklyMode]);
 
   useEffect(() => {
-    YouTubePlayables.init({
-      onPause: () => setGameState(prev => ({ ...prev, isPaused: true })),
-      onResume: () => setGameState(prev => ({ ...prev, isPaused: false })),
+    let mounted = true;
+
+    const setupPlayables = async () => {
+      const active = await YouTubePlayables.init({
+        onPause: () => setGameState(prev => ({ ...prev, isPaused: true })),
+        onResume: () => setGameState(prev => ({ ...prev, isPaused: false })),
+        onAudioEnabledChange: (enabled) => {
+          SoundManager.setPlatformAudioEnabled(enabled);
+          setIsPlatformAudioEnabled(enabled);
+          setIsMuted(!enabled || SoundManager.isMuted());
+        },
+        getSaveData: getPlayablesSave,
+      });
+      if (!mounted) return;
+
+      setIsYouTubePlayable(active);
+      const saved = await YouTubePlayables.loadData<PlayablesSave>();
+      if (!mounted || !saved || saved.version !== 1) return;
+
+      if (saved.settings) {
+        const restoredSettings: GameSettings = { colorBlindMode: false, reduceMotion: false, hapticsEnabled: true, ...saved.settings };
+        localStorage.setItem('bubble-pop-settings', JSON.stringify(restoredSettings));
+        setGameSettings(restoredSettings);
+        setDifficulty(restoredSettings.difficulty);
+        setTheme(restoredSettings.theme);
+        setColorBlindMode(restoredSettings.colorBlindMode);
+        Haptics.setEnabled(restoredSettings.hapticsEnabled);
+        SoundManager.setVolume(restoredSettings.volume / 100);
+      }
+      if (Array.isArray(saved.highScores)) {
+        localStorage.setItem('bubble-shooter-highscores', JSON.stringify(saved.highScores));
+        setHighScores(saved.highScores);
+      }
+      if (saved.tutorialSeen) {
+        localStorage.setItem('bubble-pop-tutorial-seen', 'true');
+        setShowTutorial(false);
+      }
+      if (isRestorableGameState(saved.gameState)) {
+        setGameState({ ...saved.gameState, isPaused: false, particles: [], comboTexts: [], soundEvent: undefined, levelComplete: false });
+        setIsDailyMode(Boolean(saved.isDailyMode));
+        setIsWeeklyMode(Boolean(saved.isWeeklyMode));
+      }
+    };
+
+    void setupPlayables().finally(() => {
+      if (!mounted) return;
+      requestAnimationFrame(() => {
+        YouTubePlayables.firstFrameReady();
+        YouTubePlayables.gameReady();
+      });
     });
-    setTimeout(() => {
-      YouTubePlayables.firstFrameReady();
-      YouTubePlayables.gameReady();
-    }, 500);
-  }, []);
+    return () => { mounted = false; };
+  }, [getPlayablesSave]);
+
+  useEffect(() => {
+    const saveTimer = window.setTimeout(() => { void YouTubePlayables.saveData(getPlayablesSave()); }, 350);
+    return () => window.clearTimeout(saveTimer);
+  }, [gameState.score, gameState.level, gameState.lives, gameState.bubbles.length, gameState.isGameOver, gameSettings, highScores, isDailyMode, showTutorial, getPlayablesSave]);
+
+  useEffect(() => {
+    window.render_game_to_text = () => {
+      const state = gameStateRef.current;
+      return JSON.stringify({
+        coordinateSystem: 'canvas origin is top-left; x increases right and y increases down',
+        mode: state.isGameOver ? 'game-over' : state.isPaused ? 'paused' : 'playing',
+        score: state.score,
+        level: state.level,
+        lives: state.lives,
+        combo: state.combo,
+        currentBubble: state.currentBubble ? { color: state.currentBubble.color, powerUp: state.currentBubble.powerUp } : null,
+        nextBubble: state.nextBubble ? { color: state.nextBubble.color, powerUp: state.nextBubble.powerUp } : null,
+        bubbles: state.bubbles.map((bubble) => ({ x: bubble.position.x, y: bubble.position.y, color: bubble.color, powerUp: bubble.powerUp })),
+      });
+    };
+    const installedFallbackClock = typeof window.advanceTime !== 'function';
+    if (installedFallbackClock) {
+      window.advanceTime = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+    return () => {
+      delete window.render_game_to_text;
+      if (installedFallbackClock) delete window.advanceTime;
+    };
+  }, [gameSettings.reduceMotion]);
 
   useEffect(() => {
     const check = () => setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowSettings(false); setShowDailyChallenge(false); setShowWeeklyChallenge(false);
+        setShowAchievements(false); setShowStats(false); setShowMultiplayer(false);
+        return;
+      }
+      if (event.key.toLowerCase() !== 'f') return;
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void gameShellRef.current?.requestFullscreen?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   // Daily streak check-in (runs once on mount)
@@ -238,6 +397,7 @@ const Index = () => {
     SoundManager.shoot();
     Haptics.shoot();
     const newState = updateGameState(gameState, angle);
+    recordShot(gameState.bubbles.length - newState.bubbles.length);
 
     if (newState.soundEvent) {
       const evt = newState.soundEvent;
@@ -272,7 +432,7 @@ const Index = () => {
       queueAchievements({ ...newState, level: nextLevel }, undefined);
       setTimeout(() => {
         setShowLevelUp(false);
-        setGameState(initializeGame(nextLevel, newState.score, isDailyMode));
+        setGameState(initializeGame(nextLevel, newState.score, isWeeklyMode ? 'weekly' : isDailyMode));
       }, 2000);
       return;
     }
@@ -294,6 +454,9 @@ const Index = () => {
       if (isDailyMode) {
         saveDailyResult(newState.score, newState.level, playerName || 'Player');
       }
+      if (isWeeklyMode) saveWeeklyResult(newState.score, newState.level);
+      recordCompletedGame(newState.score, newState.level, isWeeklyMode ? 'weekly' : isDailyMode ? 'daily' : 'normal');
+      queueAchievements(finalState, undefined);
       if (isHighScore(newState.score)) {
         setShowNameInput(true);
         setShowConfetti(true);
@@ -301,10 +464,11 @@ const Index = () => {
         setTimeout(() => setShowConfetti(false), 3000);
       }
     }
-  }, [gameState, triggerScreenShake, isDailyMode, playerName, queueAchievements, mpSession]);
+  }, [gameState, triggerScreenShake, isDailyMode, isWeeklyMode, playerName, queueAchievements, mpSession]);
 
   const handleRestart = () => {
     setIsDailyMode(false);
+    setIsWeeklyMode(false);
     setMpSession(null);
     setMpPlayers([]);
     setMpTimeLeft(null);
@@ -335,8 +499,18 @@ const Index = () => {
 
   const handleStartDaily = () => {
     setIsDailyMode(true);
+    setIsWeeklyMode(false);
     setShowDailyChallenge(false);
     setGameState(applyStreakReward(initializeGame(1, 0, true)));
+    setShowLevelUp(false);
+    setShowNameInput(false);
+  };
+
+  const handleStartWeekly = () => {
+    setIsDailyMode(false);
+    setIsWeeklyMode(true);
+    setShowWeeklyChallenge(false);
+    setGameState(applyStreakReward(initializeGame(1, 0, 'weekly')));
     setShowLevelUp(false);
     setShowNameInput(false);
   };
@@ -346,6 +520,8 @@ const Index = () => {
   };
 
   const handleToggleMute = () => {
+    // YouTube's mute setting always wins over in-game controls.
+    if (isYouTubePlayable && !isPlatformAudioEnabled) return;
     const muted = SoundManager.toggleMute();
     setIsMuted(muted);
   };
@@ -355,9 +531,11 @@ const Index = () => {
     localStorage.setItem('bubble-pop-settings', JSON.stringify(s));
     setDifficulty(s.difficulty);
     setTheme(s.theme);
+    setColorBlindMode(s.colorBlindMode);
+    Haptics.setEnabled(s.hapticsEnabled);
     SoundManager.setVolume(s.volume / 100);
     setShowSettings(false);
-    setGameState(initializeGame(1, 0, isDailyMode));
+    setGameState(initializeGame(1, 0, isWeeklyMode ? 'weekly' : isDailyMode));
   };
 
   const handleSaveScore = async () => {
@@ -367,6 +545,7 @@ const Index = () => {
     if (isDailyMode) {
       saveDailyResult(gameState.score, gameState.level, name);
     }
+    if (isWeeklyMode) saveWeeklyResult(gameState.score, gameState.level);
     setShowNameInput(false);
     setPlayerName('');
   };
@@ -376,7 +555,8 @@ const Index = () => {
   const progress = Math.min(100, Math.floor((gameState.score / targetScore) * 100));
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center p-2 overflow-hidden">
+    <Suspense fallback={null}>
+    <div ref={gameShellRef} className="min-h-[100dvh] bg-[#0a0a1a] flex items-center justify-center p-2 overflow-hidden">
       {/* Achievement toast */}
       {achievementQueue.length > 0 && (
         <AchievementToast
@@ -394,10 +574,10 @@ const Index = () => {
       </div>
 
       {/* Main game container */}
-      <div className={`relative bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden ${
+      <div className={`relative bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden w-full max-w-[1100px] h-[calc(100dvh-1rem)] max-h-[720px] ${
         isLandscape
-          ? 'flex flex-row w-[min(95vw,95vh*16/9)] h-[min(95vh,95vw*9/16)] p-3 gap-3'
-          : 'flex flex-col w-[min(95vw,95vh*9/16)] h-[min(95vh,95vw*16/9)] p-3'
+          ? 'flex flex-row p-3 gap-3'
+          : 'flex flex-col p-3'
       }`}>
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 blur-xl -z-10" />
 
@@ -413,6 +593,11 @@ const Index = () => {
               <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/30 font-bold">
                 📅 DAILY CHALLENGE
               </span>
+            </div>
+          )}
+          {isWeeklyMode && (
+            <div className="mt-1 text-center">
+              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30 font-bold">🗓️ WEEKLY CHALLENGE</span>
             </div>
           )}
 
@@ -441,13 +626,15 @@ const Index = () => {
           {/* Controls row */}
           <div className="flex items-center justify-end mt-2 gap-1 flex-wrap">
             <div className="flex gap-1 flex-wrap">
-              <button
-                onClick={handleToggleMute}
-                className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? '🔇' : '🔊'}
-              </button>
+              {!isYouTubePlayable && (
+                <button
+                  onClick={handleToggleMute}
+                  className="w-7 h-7 flex items-center justify-center bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all border border-white/10"
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMuted ? '🔇' : '🔊'}
+                </button>
+              )}
               <button
                 onClick={() => {
                   if (isMusicOn) { SoundManager.stopMusic(); } else { SoundManager.startMusic(); }
@@ -480,12 +667,21 @@ const Index = () => {
                 📅
               </button>
               <button
-                onClick={() => setShowMultiplayer(true)}
-                className="w-7 h-7 flex items-center justify-center bg-green-500/20 text-white rounded-lg text-xs hover:bg-green-500/30 transition-all border border-green-500/20"
-                title="Multiplayer"
+                onClick={() => setShowWeeklyChallenge(true)}
+                className="w-7 h-7 flex items-center justify-center bg-blue-500/20 text-white rounded-lg text-xs hover:bg-blue-500/30 transition-all border border-blue-500/20"
+                title="Weekly Challenge"
               >
-                🎮
+                🗓️
               </button>
+              {!isYouTubePlayable && (
+                <button
+                  onClick={() => setShowMultiplayer(true)}
+                  className="w-7 h-7 flex items-center justify-center bg-green-500/20 text-white rounded-lg text-xs hover:bg-green-500/30 transition-all border border-green-500/20"
+                  title="Multiplayer"
+                >
+                  🎮
+                </button>
+              )}
               <button
                 onClick={() => setShowStats(true)}
                 className="w-7 h-7 flex items-center justify-center bg-cyan-500/20 text-white rounded-lg text-xs hover:bg-cyan-500/30 transition-all border border-cyan-500/20"
@@ -591,6 +787,9 @@ const Index = () => {
               {isDailyMode && (
                 <p className="text-yellow-400 text-xs font-bold mb-1">📅 Daily Challenge</p>
               )}
+              {isWeeklyMode && (
+                <p className="text-cyan-300 text-xs font-bold mb-1">🗓️ Weekly Challenge</p>
+              )}
               <p className="text-2xl text-white mb-1">{gameState.score.toLocaleString()}</p>
               <p className="text-sm text-gray-400 mb-4">Level {gameState.level}</p>
 
@@ -616,11 +815,13 @@ const Index = () => {
                 </div>
               )}
 
-              <div className="flex gap-2 mb-4 justify-center">
-                <button onClick={() => shareScore(gameState.score, gameState.level, 'twitter')} className="px-3 py-1.5 bg-[#1da1f2]/20 hover:bg-[#1da1f2]/40 text-[#1da1f2] rounded-lg text-xs font-medium transition-all" title="Share on X">𝕏</button>
-                <button onClick={() => shareScore(gameState.score, gameState.level, 'facebook')} className="px-3 py-1.5 bg-[#1877f2]/20 hover:bg-[#1877f2]/40 text-[#1877f2] rounded-lg text-xs font-medium transition-all" title="Share on Facebook">f</button>
-                <button onClick={() => { shareScore(gameState.score, gameState.level, 'copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg text-xs font-medium transition-all" title="Copy to clipboard">{copied ? '✓' : '📋'}</button>
-              </div>
+              {!isYouTubePlayable && (
+                <div className="flex gap-2 mb-4 justify-center">
+                  <button onClick={() => shareScore(gameState.score, gameState.level, 'twitter')} className="px-3 py-1.5 bg-[#1da1f2]/20 hover:bg-[#1da1f2]/40 text-[#1da1f2] rounded-lg text-xs font-medium transition-all" title="Share on X">𝕏</button>
+                  <button onClick={() => shareScore(gameState.score, gameState.level, 'facebook')} className="px-3 py-1.5 bg-[#1877f2]/20 hover:bg-[#1877f2]/40 text-[#1877f2] rounded-lg text-xs font-medium transition-all" title="Share on Facebook">f</button>
+                  <button onClick={() => { shareScore(gameState.score, gameState.level, 'copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg text-xs font-medium transition-all" title="Copy to clipboard">{copied ? '✓' : '📋'}</button>
+                </div>
+              )}
 
               <button
                 onClick={handleRestart}
@@ -649,13 +850,17 @@ const Index = () => {
           />
         )}
 
+        {showWeeklyChallenge && (
+          <WeeklyChallengeOverlay onStart={handleStartWeekly} onClose={() => setShowWeeklyChallenge(false)} />
+        )}
+
         {/* Achievements overlay */}
         {showAchievements && (
           <AchievementsOverlay onClose={() => setShowAchievements(false)} />
         )}
 
         {/* Multiplayer overlay */}
-        {showMultiplayer && (
+        {showMultiplayer && !isYouTubePlayable && (
           <MultiplayerOverlay
             onStart={handleStartMultiplayer}
             onClose={() => setShowMultiplayer(false)}
@@ -675,6 +880,7 @@ const Index = () => {
         </div>
       )}
     </div>
+    </Suspense>
   );
 };
 

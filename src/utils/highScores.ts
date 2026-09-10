@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { YouTubePlayables } from './youtubePlayables';
 
 const STORAGE_KEY = 'bubble-shooter-highscores';
 
@@ -22,6 +23,9 @@ export const getHighScores = (): HighScore[] => {
 };
 
 export const getGlobalHighScores = async (): Promise<HighScore[]> => {
+  // Playables cannot make arbitrary external service calls. YouTube scores are
+  // submitted through the SDK, while this local list is restored from saveData.
+  if (YouTubePlayables.isActive()) return getHighScores();
   try {
     const { data, error } = await supabase
       .from('high_scores')
@@ -50,7 +54,8 @@ export const saveHighScore = async (score: number, level: number, name: string =
   const top10 = scores.slice(0, 10);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(top10));
 
-  // Save to database
+  // Save to database outside Playables only. Playables uses SDK cloud save.
+  if (YouTubePlayables.isActive()) return top10;
   try {
     await supabase.from('high_scores').insert({
       player_name: name,

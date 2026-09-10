@@ -5,7 +5,6 @@
   "description": "A colorful bubble shooter game with exciting levels and power-ups!",
   "start_url": "/",
   "display": "fullscreen",
-  "orientation": "portrait",
   "theme_color": "#667eea",
   "background_color": "#764ba2",
   "icons": [

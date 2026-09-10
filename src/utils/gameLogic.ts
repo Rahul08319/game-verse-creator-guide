@@ -7,6 +7,8 @@ const THEME_PALETTES = {
   ocean: ['#0080FF', '#00CCCC', '#6600FF', '#0066AA', '#33AADD', '#9966FF', '#00AAAA'],
 };
 
+const COLOR_BLIND_PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#F0E442'];
+
 const THEME_BACKGROUNDS = {
   neon: { top: '#0a0a1a', mid: '#1a0a2e', bottom: '#0a1a2e', glow1: 'rgba(255, 0, 128, 0.15)', glow2: 'rgba(0, 255, 255, 0.15)', grid: 'rgba(255, 0, 255, 0.05)' },
   retro: { top: '#1a1a0a', mid: '#2e1a0a', bottom: '#1a2e0a', glow1: 'rgba(255, 102, 0, 0.15)', glow2: 'rgba(255, 255, 0, 0.15)', grid: 'rgba(255, 153, 0, 0.05)' },
@@ -14,18 +16,20 @@ const THEME_BACKGROUNDS = {
 };
 
 let currentTheme: 'neon' | 'retro' | 'ocean' = 'neon';
+let colorBlindMode = false;
 
 export const setTheme = (t: 'neon' | 'retro' | 'ocean') => { currentTheme = t; };
+export const setColorBlindMode = (enabled: boolean) => { colorBlindMode = enabled; };
 export const getTheme = () => currentTheme;
-export const getThemeColors = () => THEME_PALETTES[currentTheme];
+export const getThemeColors = () => colorBlindMode ? COLOR_BLIND_PALETTE : THEME_PALETTES[currentTheme];
 export const getThemeBackground = () => THEME_BACKGROUNDS[currentTheme];
 
 const getGameConfig = (): GameConfig => ({
   canvasWidth: 350,
   canvasHeight: 500,
   bubbleRadius: 18,
-  colors: THEME_PALETTES[currentTheme],
-  neonColors: THEME_PALETTES[currentTheme],
+  colors: getThemeColors(),
+  neonColors: getThemeColors(),
   rowCount: 8,
   maxCols: 10
 });
@@ -96,14 +100,25 @@ export const getDailySeed = (): number => {
   return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 };
 
+export const getWeeklySeed = (): number => {
+  const now = new Date();
+  const utc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const day = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((utc.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return utc.getUTCFullYear() * 100 + week;
+};
+
 const getRandom = (): number => {
   if (seededRng) return seededRng.next();
   return Math.random();
 };
 
-export const initializeGame = (level: number = 1, carryScore: number = 0, dailyChallenge: boolean = false): GameState => {
-  if (dailyChallenge) {
-    seededRng = new SeededRandom(getDailySeed() + level * 1000);
+export const initializeGame = (level: number = 1, carryScore: number = 0, challengeMode: 'daily' | 'weekly' | boolean = false): GameState => {
+  if (challengeMode) {
+    const seed = challengeMode === 'weekly' ? getWeeklySeed() : getDailySeed();
+    seededRng = new SeededRandom(seed + level * 1000);
   } else {
     seededRng = null;
   }

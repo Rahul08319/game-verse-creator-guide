@@ -1,5 +1,6 @@
 
 const ACHIEVEMENTS_KEY = 'bubble-pop-achievements';
+import { getPlayerProgress } from './playerProgress';
 
 export interface Achievement {
   id: string;
@@ -24,6 +25,9 @@ const ACHIEVEMENT_DEFS: Achievement[] = [
   { id: 'score_5000', title: 'High Roller', description: 'Score 5,000 points', icon: '💎' },
   { id: 'score_10000', title: 'Score Legend', description: 'Score 10,000 points', icon: '🏆' },
   { id: 'daily_complete', title: 'Daily Warrior', description: 'Complete a daily challenge', icon: '📅' },
+  { id: 'weekly_complete', title: 'Weekender', description: 'Complete a weekly challenge', icon: '🗓️' },
+  { id: 'games_10', title: 'Regular Player', description: 'Finish 10 games offline', icon: '🎮' },
+  { id: 'bubbles_250', title: 'Bubble Breaker', description: 'Pop 250 bubbles offline', icon: '💥' },
   { id: 'clear_board', title: 'Clean Sweep', description: 'Clear all bubbles from the board', icon: '✨' },
 ];
 
@@ -70,6 +74,7 @@ export const checkAchievements = (context: {
   score: number;
   bubblesLeft: number;
   isDailyMode: boolean;
+  isWeeklyMode?: boolean;
   isGameOver: boolean;
 }): AchievementCheckResult => {
   const newlyUnlocked: Achievement[] = [];
@@ -104,6 +109,10 @@ export const checkAchievements = (context: {
 
   // Daily
   if (context.isDailyMode && context.isGameOver) tryUnlock('daily_complete');
+  if (context.isWeeklyMode && context.isGameOver) tryUnlock('weekly_complete');
+  const progress = getPlayerProgress();
+  if (progress.gamesPlayed >= 10) tryUnlock('games_10');
+  if (progress.bubblesPopped >= 250) tryUnlock('bubbles_250');
 
   return { newlyUnlocked };
 };

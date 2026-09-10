@@ -1,6 +1,7 @@
 
 let audioContext: AudioContext | null = null;
 let isMuted = false;
+let isPlatformAudioEnabled = true;
 let masterVolume = 0.8;
 let bgMusicGain: GainNode | null = null;
 let bgMusicPlaying = false;
@@ -18,7 +19,7 @@ const getAudioContext = (): AudioContext => {
 };
 
 const playTone = (frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.3, detune: number = 0) => {
-  if (isMuted) return;
+  if (isMuted || !isPlatformAudioEnabled) return;
   const adjustedVolume = volume * masterVolume;
   try {
     const ctx = getAudioContext();
@@ -37,7 +38,7 @@ const playTone = (frequency: number, duration: number, type: OscillatorType = 's
 };
 
 const playNoise = (duration: number, volume: number = 0.1) => {
-  if (isMuted) return;
+  if (isMuted || !isPlatformAudioEnabled) return;
   try {
     const ctx = getAudioContext();
     const bufferSize = ctx.sampleRate * duration;
@@ -66,7 +67,7 @@ const BG_MELODY = [
 ];
 
 const playBgLoop = () => {
-  if (!bgMusicPlaying || isMuted) return;
+  if (!bgMusicPlaying || isMuted || !isPlatformAudioEnabled) return;
   try {
     const ctx = getAudioContext();
     let time = ctx.currentTime;
@@ -207,6 +208,12 @@ export const SoundManager = {
     return isMuted;
   },
   isMuted: () => isMuted,
+  setPlatformAudioEnabled: (enabled: boolean) => {
+    isPlatformAudioEnabled = enabled;
+    if (!enabled) stopBgMusic();
+    else if (!isMuted) startBgMusic();
+  },
+  isPlatformAudioEnabled: () => isPlatformAudioEnabled,
   startMusic: () => startBgMusic(),
   stopMusic: () => stopBgMusic(),
   setVolume: (v: number) => { masterVolume = Math.max(0, Math.min(1, v)); },
