@@ -38,6 +38,7 @@ const LevelUpOverlay = lazy(() => import('../components/LevelUpOverlay'));
 const StatsOverlay = lazy(() => import('../components/StatsOverlay'));
 const WeeklyChallengeOverlay = lazy(() => import('../components/WeeklyChallengeOverlay'));
 const WeeklyGhostPace = lazy(() => import('../components/WeeklyGhostPace'));
+const LevelJourneyOverlay = lazy(() => import('../components/LevelJourneyOverlay'));
 
 interface PlayablesSave {
   version: 1;
@@ -83,6 +84,7 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showDailyChallenge, setShowDailyChallenge] = useState(false);
   const [showWeeklyChallenge, setShowWeeklyChallenge] = useState(false);
+  const [showLevelJourney, setShowLevelJourney] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [isDailyMode, setIsDailyMode] = useState(false);
   const [isWeeklyMode, setIsWeeklyMode] = useState(false);
@@ -287,7 +289,7 @@ const Index = () => {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setShowSettings(false); setShowDailyChallenge(false); setShowWeeklyChallenge(false);
+        setShowSettings(false); setShowDailyChallenge(false); setShowWeeklyChallenge(false); setShowLevelJourney(false);
         setShowAchievements(false); setShowStats(false); setShowMultiplayer(false);
         return;
       }
@@ -696,6 +698,13 @@ const Index = () => {
               >
                 🗓️
               </button>
+              <button
+                onClick={() => setShowLevelJourney(true)}
+                className="w-7 h-7 flex items-center justify-center bg-indigo-500/20 text-white rounded-lg text-xs hover:bg-indigo-500/30 transition-all border border-indigo-400/20"
+                title="Level Journey"
+              >
+                ✦
+              </button>
               {!isYouTubePlayable && (
                 <button
                   onClick={() => setShowMultiplayer(true)}
@@ -879,6 +888,8 @@ const Index = () => {
         {showWeeklyChallenge && (
           <WeeklyChallengeOverlay onStart={handleStartWeekly} onClose={() => setShowWeeklyChallenge(false)} />
         )}
+
+        {showLevelJourney && <LevelJourneyOverlay currentLevel={gameState.level} onClose={() => setShowLevelJourney(false)} />}
 
         {/* Achievements overlay */}
         {showAchievements && (
