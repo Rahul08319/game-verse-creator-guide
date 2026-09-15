@@ -689,13 +689,17 @@ const Index = () => {
           {/* Level progress */}
           <div className="mt-2">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-purple-400 font-bold">Level {gameState.level}</span>
-              <span className="text-gray-400">{progress}%</span>
+              <span className={`${gameState.isBossLevel && !gameState.bossDefeated ? 'text-amber-300' : 'text-purple-400'} font-bold`}>
+                {gameState.isBossLevel && !gameState.bossDefeated ? `♛ ${gameState.bossName}` : `Level ${gameState.level}`}
+              </span>
+              <span className="text-gray-400">{gameState.isBossLevel && !gameState.bossDefeated ? 'BOSS' : `${progress}%`}</span>
             </div>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-pink-500 to-cyan-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+              <div className={`h-full rounded-full transition-all duration-500 ${gameState.isBossLevel && !gameState.bossDefeated ? 'bg-gradient-to-r from-amber-400 to-pink-500' : 'bg-gradient-to-r from-pink-500 to-cyan-500'}`} style={{ width: `${gameState.isBossLevel && !gameState.bossDefeated ? 100 : progress}%` }} />
             </div>
-            <div className="text-[10px] text-gray-500 mt-1 text-center">Target: {targetScore.toLocaleString()}</div>
+            <div className="text-[10px] text-gray-500 mt-1 text-center">
+              {gameState.isBossLevel && !gameState.bossDefeated ? 'Match the boss core to clear this world' : `Target: ${targetScore.toLocaleString()}`}
+            </div>
           </div>
 
           {/* Controls row */}

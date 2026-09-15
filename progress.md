@@ -26,3 +26,4 @@ Original follow-up prompt: Add adaptive difficulty, combo streak special bubbles
 - Browser gameplay validation rendered the updated board and Nova preview; its text state reported the expected adaptive fields and no new page errors. Final Playables preflight passed with 23 files, 0.65 MiB initial load, and 0.78 MiB total output.
 - Final UI polish: added Nova to the power-up legend so combo-earned special shots are explained in the live HUD. A follow-up browser pass visually confirmed the board and shooter remain healthy; the bundle preflight still passes.
 - Continuing polish: added a Level Journey panel that previews Levels 1–10, boss puzzles, point targets, current progress, and the next cosmetic goal.
+- Boss-level HUD now clearly switches from a misleading score percentage to a named boss objective and “match the boss core” instruction.
