@@ -20,7 +20,7 @@ import { getWeeklyGhost, saveWeeklyGhost, type GhostShot, type WeeklyGhostRun } 
 import { recordShot, recordCompletedGame } from '../utils/playerProgress';
 import { checkAchievements } from '../utils/achievements';
 import type { Achievement } from '../utils/achievements';
-import { YouTubePlayables } from '../utils/youtubePlayables';
+import { YouTubePlayables, REWARD_IDS } from '../utils/youtubePlayables';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
 import { Haptics } from '../utils/haptics';
 import { shareScore, getAvatarColor, getInitials } from '../utils/social';
@@ -115,6 +115,9 @@ const Index = () => {
   const [rematchLoading, setRematchLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [weeklyGhost, setWeeklyGhost] = useState<WeeklyGhostRun | null>(() => getWeeklyGhost());
+  // Ads state
+  const [adRewardPending, setAdRewardPending] = useState(false);
+  const [showRewardedAdOffer, setShowRewardedAdOffer] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
   const gameStateRef = useRef(gameState);
   const gameSettingsRef = useRef(gameSettings);
@@ -442,6 +445,8 @@ const Index = () => {
       SoundManager.levelUp();
       Haptics.levelUp();
       YouTubePlayables.sendScore(newState.score);
+      // Request interstitial ad between levels (non-blocking, best-effort)
+      void YouTubePlayables.requestInterstitialAd();
       setShowLevelUp(true);
       const nextLevel = newState.level + 1;
       setGameState(newState);
@@ -463,6 +468,12 @@ const Index = () => {
       YouTubePlayables.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
+      // Request interstitial ad on game over (non-blocking)
+      void YouTubePlayables.requestInterstitialAd();
+      // Offer rewarded ad for continue (only in Playables env, normal mode)
+      if (YouTubePlayables.isActive() && !mpSession && !isDailyMode && !isWeeklyMode) {
+        setShowRewardedAdOffer(true);
+      }
       if (mpSession) {
         updateScore(mpSession.sessionId, finalState.score, finalState.level, true);
         setShowMpResults(true);
@@ -494,10 +505,41 @@ const Index = () => {
     setMpPlayers([]);
     setMpTimeLeft(null);
     setShowMpResults(false);
+    setShowRewardedAdOffer(false);
     if (mpTimerRef.current) clearInterval(mpTimerRef.current);
     setGameState(applyStreakReward(initializeGame()));
     setShowLevelUp(false);
     setShowNameInput(false);
+  };
+
+  /** Player taps "Watch Ad to Continue" — request rewarded ad for +1 life. */
+  const handleContinueWithAd = async () => {
+    setAdRewardPending(true);
+    try {
+      const earned = await YouTubePlayables.requestRewardedAd(REWARD_IDS.EXTRA_LIFE);
+      if (earned) {
+        // Grant extra life and resume
+        setGameState(prev => ({
+          ...prev,
+          isGameOver: false,
+          lives: 1,
+          isPaused: false,
+        }));
+        toast.success('❤️ Extra life granted! Keep going!');
+      } else {
+        toast('Ad not completed — no reward earned.');
+      }
+    } catch {
+      toast.error('Ad unavailable. Try again later.');
+    } finally {
+      setAdRewardPending(false);
+      setShowRewardedAdOffer(false);
+    }
+  };
+
+  /** Player skips the rewarded ad offer. */
+  const handleSkipRewardedAd = () => {
+    setShowRewardedAdOffer(false);
   };
 
   const handleRematch = useCallback(async () => {
@@ -863,6 +905,34 @@ const Index = () => {
                 className="bg-gradient-to-r from-pink-500 to-cyan-500 text-white px-8 py-3 rounded-full font-semibold hover:scale-105 transform transition-all duration-200 shadow-lg shadow-pink-500/25"
               >
                 Play Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Rewarded Ad Offer overlay — shown in Playables env on game over */}
+        {showRewardedAdOffer && gameState.isGameOver && !showMpResults && (
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-3xl flex items-center justify-center z-20 animate-fade-in">
+            <div className="bg-gradient-to-br from-yellow-900/90 to-red-900/90 rounded-2xl p-6 text-center shadow-xl border border-yellow-500/40 w-72">
+              <div className="text-4xl mb-2">🎁</div>
+              <h2 className="text-xl font-bold text-yellow-300 mb-1">Continue Playing?</h2>
+              <p className="text-sm text-gray-300 mb-4">
+                Watch a short ad to get <span className="text-red-400 font-bold">+1 Life</span> and keep your score of{' '}
+                <span className="text-white font-bold">{gameState.score.toLocaleString()}</span>.
+              </p>
+              <button
+                onClick={handleContinueWithAd}
+                disabled={adRewardPending}
+                className="w-full mb-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-3 rounded-xl font-semibold text-sm hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
+                {adRewardPending ? '⌛ Loading Ad...' : '▶️ Watch Ad · Get Extra Life'}
+              </button>
+              <button
+                onClick={handleSkipRewardedAd}
+                disabled={adRewardPending}
+                className="w-full text-gray-400 text-xs hover:text-white transition-colors py-1"
+              >
+                No thanks — Play Again
               </button>
             </div>
           </div>
