@@ -21,6 +21,8 @@ import { recordShot, recordCompletedGame } from '../utils/playerProgress';
 import { checkAchievements } from '../utils/achievements';
 import type { Achievement } from '../utils/achievements';
 import { YouTubePlayables, REWARD_IDS } from '../utils/youtubePlayables';
+import { PlatformSwitcherOverlay } from '../components/PlatformSwitcherOverlay';
+import { PLATFORMS_CATALOG, adapter } from '../platforms';
 import { MultiplayerSession, MultiplayerPlayer, updateScore, getPlayers, subscribeToPlayers, resetSessionForRematch } from '../utils/multiplayer';
 import { Haptics } from '../utils/haptics';
 import { shareScore, getAvatarColor, getInitials } from '../utils/social';
@@ -118,6 +120,11 @@ const Index = () => {
   // Ads state
   const [adRewardPending, setAdRewardPending] = useState(false);
   const [showRewardedAdOffer, setShowRewardedAdOffer] = useState(false);
+  // Platform Universe state
+  const [showPlatformSwitcher, setShowPlatformSwitcher] = useState(false);
+  const [currentPlatformMeta, setCurrentPlatformMeta] = useState(() =>
+    PLATFORMS_CATALOG.find((p) => p.id === adapter.platform) || PLATFORMS_CATALOG[0]
+  );
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
   const gameStateRef = useRef(gameState);
   const gameSettingsRef = useRef(gameSettings);
@@ -293,7 +300,7 @@ const Index = () => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowSettings(false); setShowDailyChallenge(false); setShowWeeklyChallenge(false); setShowLevelJourney(false);
-        setShowAchievements(false); setShowStats(false); setShowMultiplayer(false);
+        setShowAchievements(false); setShowStats(false); setShowMultiplayer(false); setShowPlatformSwitcher(false);
         return;
       }
       if (event.key.toLowerCase() !== 'f') return;
@@ -654,6 +661,17 @@ const Index = () => {
           <div className="mt-1 flex justify-center">
             <StreakBadge streak={streak} pendingPowerUp={pendingReward?.guaranteedPowerUp ?? null} />
           </div>
+          <div className="mt-1.5 flex justify-center">
+            <button
+              onClick={() => setShowPlatformSwitcher(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-semibold text-white/90 border border-white/15 transition-all shadow-sm press-scale"
+              title="Platform Universe (13 Platforms)"
+            >
+              <span>{currentPlatformMeta.icon}</span>
+              <span>{currentPlatformMeta.name}</span>
+              <span className="text-white/40 text-[8px]">▾</span>
+            </button>
+          </div>
 
           {isDailyMode && (
             <div className="mt-1 text-center">
@@ -762,6 +780,20 @@ const Index = () => {
                 title="Stats"
               >
                 📊
+              </button>
+              <button
+                onClick={() => setShowPlatformSwitcher(true)}
+                className="w-7 h-7 flex items-center justify-center bg-cyan-500/20 text-cyan-300 rounded-lg text-xs hover:bg-cyan-500/30 transition-all border border-cyan-500/30"
+                title="Platform Universe (13 Platforms)"
+              >
+                
+              </button>
+              <button
+                onClick={() => navigate('/platforms')}
+                className="w-7 h-7 flex items-center justify-center bg-pink-500/20 text-pink-300 rounded-lg text-xs hover:bg-pink-500/30 transition-all border border-pink-500/30"
+                title="Universe Hub"
+              >
+                🌐
               </button>
               <button
                 onClick={() => setShowSettings(true)}
@@ -977,6 +1009,20 @@ const Index = () => {
         {/* Stats overlay */}
         {showStats && (
           <StatsOverlay onClose={() => setShowStats(false)} />
+        )}
+
+        {/* Platform Switcher overlay */}
+        {showPlatformSwitcher && (
+          <PlatformSwitcherOverlay
+            onClose={() => setShowPlatformSwitcher(false)}
+            onPlatformChanged={(id) => {
+              const match = PLATFORMS_CATALOG.find((p) => p.id === id);
+              if (match) {
+                setCurrentPlatformMeta(match);
+                toast.success(`Engine set to ${match.name}`);
+              }
+            }}
+          />
         )}
       </div>
 

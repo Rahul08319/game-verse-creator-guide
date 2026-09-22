@@ -7,6 +7,7 @@ import { lazy, Suspense } from "react";
 import Index from "./pages/Index";
 
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const PlatformHub = lazy(() => import("./pages/PlatformHub"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/platforms" element={<PlatformHub />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
