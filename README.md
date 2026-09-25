@@ -31,6 +31,7 @@ Bubble Pop Blast is a responsive bubble shooter with high-DPI Canvas rendering, 
 
 - **Adaptive pacing** offers a color-match assist after a difficult sequence, while high accuracy makes the palette more demanding.
 - **Combo rewards** give Bomb at 3×, Rainbow at 5×, and Nova on longer chains.
+- **Bank shots** reward a successful wall-bounce match with a 25% trick-shot bonus.
 - **Boss encounters** in Levels 5 and 10 ask the player to match a boss core, not merely chase a score.
 - **Weekly ghosts** keep a local recording of a player’s best pace to race on the next attempt.
 - **Unlockable cosmetics** include Aurora and Solar themes, plus Stardust and Confetti pop effects.

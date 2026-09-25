@@ -51,6 +51,7 @@ export interface GameState {
   particles: Particle[];
   comboTexts: ComboText[];
   combo: number;
+  lastShotWasBankShot: boolean;
   shotsFired: number;
   successfulShots: number;
   adaptiveTier: -1 | 0 | 1;

@@ -265,6 +265,7 @@ const Index = () => {
         level: state.level,
         lives: state.lives,
         combo: state.combo,
+        bankShot: state.lastShotWasBankShot,
         adaptiveTier: state.adaptiveTier,
         accuracy: state.shotsFired ? Math.round((state.successfulShots / state.shotsFired) * 100) : 0,
         boss: state.isBossLevel ? { name: state.bossName, defeated: state.bossDefeated } : null,

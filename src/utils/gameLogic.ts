@@ -150,6 +150,7 @@ export const initializeGame = (level: number = 1, carryScore: number = 0, challe
     particles: [],
     comboTexts: [],
     combo: 0,
+    lastShotWasBankShot: false,
     shotsFired: 0,
     successfulShots: 0,
     adaptiveTier: 0,
@@ -359,6 +360,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
 
   const speed = 8;
   const { trajectory, hitBubble, hitTop } = simulateTrajectory(shootingBubble.position, shootAngle, speed, newBubbles);
+  const isBankShot = wallBouncePositions.length > 0;
 
   if (trajectory.length > 0 || hitBubble || hitTop) {
     const finalPosition = trajectory.length > 0 ? trajectory[trajectory.length - 1] : shootingBubble.position;
@@ -395,6 +397,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
           score,
           particles: newParticles,
           comboTexts: newComboTexts,
+          lastShotWasBankShot: false,
           soundEvent: 'bomb' as const
         };
 
@@ -417,6 +420,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
           score: gameState.score + affectedBubbles.length * 20,
           particles: [...newParticles, ...createExplosionParticles(shootingBubble.position, '#FFFFFF', 28)],
           comboTexts: newComboTexts,
+          lastShotWasBankShot: false,
           soundEvent: 'nova' as const
         };
 
@@ -432,6 +436,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
           frozenTimer,
           particles: newParticles,
           comboTexts: newComboTexts,
+          lastShotWasBankShot: false,
           soundEvent: 'freeze' as const
         };
 
@@ -467,7 +472,8 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
         newCombo = gameState.combo + 1;
         const comboMultiplier = 1 + (newCombo - 1) * 0.5;
         const baseScore = matchedBubbles.length * 10 + floatingBubbles.length * 5;
-        score += Math.floor(baseScore * comboMultiplier);
+        const bankShotBonus = isBankShot ? Math.ceil(baseScore * 0.25) : 0;
+        score += Math.floor(baseScore * comboMultiplier) + bankShotBonus;
 
         const bossDefeated = matchedBubbles.some(bubble => bubble.isBoss);
         soundEvent = bossDefeated ? 'boss-defeated' : newCombo >= 2 ? `combo-${newCombo}` : 'pop';
@@ -479,6 +485,21 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
           };
           newComboTexts = [...newComboTexts, createComboText(centerPos, newCombo)];
           newParticles = [...newParticles, ...createComboParticles(centerPos, '#FFFF00')];
+        }
+
+        if (isBankShot) {
+          const trickShotPosition = {
+            x: matchedBubbles.reduce((sum, b) => sum + b.position.x, 0) / matchedBubbles.length,
+            y: matchedBubbles.reduce((sum, b) => sum + b.position.y, 0) / matchedBubbles.length
+          };
+          newComboTexts = [...newComboTexts, {
+            id: `bank-shot-${Date.now()}`,
+            position: trickShotPosition,
+            text: `BANK SHOT! +${bankShotBonus}`,
+            life: 65,
+            scale: 0.9
+          }];
+          newParticles = [...newParticles, ...createComboParticles(trickShotPosition, '#00FFFF')];
         }
 
         // Check level complete
@@ -497,6 +518,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
           particles: newParticles,
           comboTexts: newComboTexts,
           combo: newCombo,
+          lastShotWasBankShot: isBankShot,
           soundEvent,
           levelComplete,
           bossDefeated: bossDefeated || gameState.bossDefeated
@@ -512,6 +534,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
         particles: newParticles,
         comboTexts: newComboTexts,
         combo: 0,
+        lastShotWasBankShot: false,
         soundEvent
       };
     }
@@ -525,6 +548,7 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
     particles: newParticles,
     comboTexts: newComboTexts,
     combo: 0,
+    lastShotWasBankShot: false,
     soundEvent: 'shoot'
   };
 };
