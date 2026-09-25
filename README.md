@@ -142,6 +142,9 @@ npm run build
 
 # 4. Run official YouTube Playables preflight audit
 npm run check:playables
+
+# 5. Package standalone distribution bundles for all 13 platforms
+npm run build:platforms
 ```
 
 ### Preflight Verification Results

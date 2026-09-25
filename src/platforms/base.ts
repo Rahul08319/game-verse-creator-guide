@@ -1,6 +1,13 @@
+export interface PlatformCallbacks {
+  onPause?: () => void;
+  onResume?: () => void;
+  onAudioEnabledChange?: (enabled: boolean) => void;
+  getSaveData?: () => Record<string, unknown>;
+}
+
 export interface GameAdapter {
   platform: string;
-  init(): Promise<boolean>;
+  init(callbacks?: PlatformCallbacks): Promise<boolean>;
   firstFrameReady(): void;
   gameReady(): void;
   loadData<T>(): Promise<T | null>;
@@ -21,15 +28,20 @@ export interface GameAdapter {
 
 export class LocalAdapter implements GameAdapter {
   platform = 'local';
-  private pauseCbs: (() => void)[] = [];
-  private resumeCbs: (() => void)[] = [];
+  protected pauseCbs: (() => void)[] = [];
+  protected resumeCbs: (() => void)[] = [];
+  protected audioCbs: ((enabled: boolean) => void)[] = [];
 
-  async init(): Promise<boolean> {
-    console.log('[LocalAdapter] init');
+  async init(callbacks: PlatformCallbacks = {}): Promise<boolean> {
+    if (callbacks.onPause) this.onPause(callbacks.onPause);
+    if (callbacks.onResume) this.onResume(callbacks.onResume);
+    if (callbacks.onAudioEnabledChange) this.onAudioEnabledChange(callbacks.onAudioEnabledChange);
     return true;
   }
+
   firstFrameReady(): void {}
   gameReady(): void {}
+
   async loadData<T>(): Promise<T | null> {
     try {
       const data = localStorage.getItem('local_save_data');
@@ -38,6 +50,7 @@ export class LocalAdapter implements GameAdapter {
       return null;
     }
   }
+
   async saveData(data: Record<string, unknown>): Promise<boolean> {
     try {
       localStorage.setItem('local_save_data', JSON.stringify(data));
@@ -46,25 +59,37 @@ export class LocalAdapter implements GameAdapter {
       return false;
     }
   }
+
   async sendScore(score: number): Promise<void> {}
   async requestInterstitialAd(): Promise<boolean> { return false; }
   async requestRewardedAd(rewardId: string): Promise<boolean> { return false; }
   async getLanguage(): Promise<string | null> { return navigator.language; }
+
   onPause(cb: () => void): () => void {
     this.pauseCbs.push(cb);
     return () => { this.pauseCbs = this.pauseCbs.filter(c => c !== cb); };
   }
+
   onResume(cb: () => void): () => void {
     this.resumeCbs.push(cb);
     return () => { this.resumeCbs = this.resumeCbs.filter(c => c !== cb); };
   }
+
   isAudioEnabled(): boolean { return true; }
-  onAudioEnabledChange(cb: (enabled: boolean) => void): () => void { return () => {}; }
+
+  onAudioEnabledChange(cb: (enabled: boolean) => void): () => void {
+    this.audioCbs.push(cb);
+    return () => { this.audioCbs = this.audioCbs.filter(c => c !== cb); };
+  }
+
   logError(msg?: string, err?: any): void { console.error(msg, err); }
   logWarning(msg?: string): void { console.warn(msg); }
+
   cleanup(): void {
     this.pauseCbs = [];
     this.resumeCbs = [];
+    this.audioCbs = [];
   }
+
   isActive(): boolean { return true; }
 }

@@ -1,4 +1,4 @@
-import { GameAdapter, LocalAdapter } from './base';
+import { GameAdapter, LocalAdapter, PlatformCallbacks } from './base';
 import { YouTubePlayables, REWARD_IDS } from '../utils/youtubePlayables';
 
 /**
@@ -12,17 +12,10 @@ export class YouTubeAdapter extends LocalAdapter implements GameAdapter {
     return YouTubePlayables.isActive();
   }
 
-  async init(): Promise<boolean> {
+  async init(callbacks: PlatformCallbacks = {}): Promise<boolean> {
     try {
       if (!this.isActive()) return false;
-      return await YouTubePlayables.init({
-        onPause: () => {
-          // Pause logic handled by system listeners
-        },
-        onResume: () => {
-          // Resume logic handled by system listeners
-        },
-      });
+      return await YouTubePlayables.init(callbacks);
     } catch (e) {
       this.logError('YouTube Playables init failed', e);
       return false;

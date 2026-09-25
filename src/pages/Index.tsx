@@ -203,8 +203,8 @@ const Index = () => {
   useEffect(() => {
     let mounted = true;
 
-    const setupPlayables = async () => {
-      const active = await YouTubePlayables.init({
+    const setupPlatform = async () => {
+      const active = await adapter.init({
         onPause: () => setGameState(prev => ({ ...prev, isPaused: true })),
         onResume: () => setGameState(prev => ({ ...prev, isPaused: false })),
         onAudioEnabledChange: (enabled) => {
@@ -216,8 +216,8 @@ const Index = () => {
       });
       if (!mounted) return;
 
-      setIsYouTubePlayable(active);
-      const saved = await YouTubePlayables.loadData<PlayablesSave>();
+      setIsYouTubePlayable(adapter.platform === 'youtube' && adapter.isActive());
+      const saved = await adapter.loadData<PlayablesSave>();
       if (!mounted || !saved || saved.version !== 1) return;
 
       if (saved.settings) {
@@ -246,18 +246,18 @@ const Index = () => {
       }
     };
 
-    void setupPlayables().finally(() => {
+    void setupPlatform().finally(() => {
       if (!mounted) return;
       requestAnimationFrame(() => {
-        YouTubePlayables.firstFrameReady();
-        YouTubePlayables.gameReady();
+        adapter.firstFrameReady();
+        adapter.gameReady();
       });
     });
     return () => { mounted = false; };
   }, [getPlayablesSave]);
 
   useEffect(() => {
-    const saveTimer = window.setTimeout(() => { void YouTubePlayables.saveData(getPlayablesSave()); }, 350);
+    const saveTimer = window.setTimeout(() => { void adapter.saveData(getPlayablesSave()); }, 350);
     return () => window.clearTimeout(saveTimer);
   }, [gameState.score, gameState.level, gameState.lives, gameState.bubbles.length, gameState.isGameOver, gameSettings, highScores, isDailyMode, showTutorial, getPlayablesSave]);
 
@@ -451,9 +451,9 @@ const Index = () => {
     if (newState.levelComplete) {
       SoundManager.levelUp();
       Haptics.levelUp();
-      YouTubePlayables.sendScore(newState.score);
+      adapter.sendScore(newState.score);
       // Request interstitial ad between levels (non-blocking, best-effort)
-      void YouTubePlayables.requestInterstitialAd();
+      void adapter.requestInterstitialAd();
       setShowLevelUp(true);
       const nextLevel = newState.level + 1;
       setGameState(newState);
@@ -472,13 +472,13 @@ const Index = () => {
     if (checkGameOver(newState)) {
       SoundManager.gameOver();
       Haptics.gameOver();
-      YouTubePlayables.sendScore(newState.score);
+      adapter.sendScore(newState.score);
       const finalState = { ...newState, isGameOver: true };
       setGameState(finalState);
       // Request interstitial ad on game over (non-blocking)
-      void YouTubePlayables.requestInterstitialAd();
-      // Offer rewarded ad for continue (only in Playables env, normal mode)
-      if (YouTubePlayables.isActive() && !mpSession && !isDailyMode && !isWeeklyMode) {
+      void adapter.requestInterstitialAd();
+      // Offer rewarded ad for continue (only in active gaming environments, normal mode)
+      if (adapter.isActive() && !mpSession && !isDailyMode && !isWeeklyMode) {
         setShowRewardedAdOffer(true);
       }
       if (mpSession) {
@@ -523,7 +523,7 @@ const Index = () => {
   const handleContinueWithAd = async () => {
     setAdRewardPending(true);
     try {
-      const earned = await YouTubePlayables.requestRewardedAd(REWARD_IDS.EXTRA_LIFE);
+      const earned = await adapter.requestRewardedAd(REWARD_IDS.EXTRA_LIFE);
       if (earned) {
         // Grant extra life and resume
         setGameState(prev => ({
