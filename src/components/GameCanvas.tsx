@@ -110,15 +110,17 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="border-2 border-white/20 rounded-2xl shadow-lg cursor-crosshair touch-none"
-      onMouseMove={handleMouseMove}
-      onClick={handleClick}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ width: 'min(100%, 560px)', maxHeight: '100%', height: 'auto' }}
-    />
+    <div className="apple-game-frame relative rounded-[1.35rem] p-[1px]">
+      <canvas
+        ref={canvasRef}
+        className="block rounded-[1.3rem] cursor-crosshair touch-none"
+        onMouseMove={handleMouseMove}
+        onClick={handleClick}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ width: 'min(100%, 560px)', maxHeight: '100%', height: 'auto' }}
+      />
+    </div>
   );
 });
 

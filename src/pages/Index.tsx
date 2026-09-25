@@ -648,7 +648,7 @@ const Index = () => {
       </div>
 
       {/* Main game container */}
-      <div className={`relative bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden w-full max-w-[1100px] h-[calc(100dvh-1rem)] max-h-[720px] ${
+      <div className={`apple-glass-surface relative backdrop-blur-xl rounded-3xl shadow-2xl border overflow-hidden w-full max-w-[1100px] h-[calc(100dvh-1rem)] max-h-[720px] ${
         isLandscape
           ? 'flex flex-row p-3 gap-3'
           : 'flex flex-col p-3'

@@ -1,276 +1,115 @@
 <div align="center">
 
-# 🫧 Bubble Pop Blast · Universal Platform Universe
+# 🫧 Bubble Pop Blast
 
-### One Canvas Game. 13 Native Web Gaming Ecosystems.
-#### Crafted with Apple Liquid Glass Design & Fluid Motion Physics
+### One polished Canvas game. Thirteen native gaming ecosystems.
 
-[![Universal Multi-Platform](https://img.shields.io/badge/Platform%20Engine-13%20Native%20Editions-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Rahul08319/game-verse-creator-guide)
-[![YouTube Playables](https://img.shields.io/badge/YouTube-Playables%20Ready-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://developers.google.com/youtube/gaming/playables)
-[![Facebook Instant](https://img.shields.io/badge/Facebook-Instant%20Games-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://developers.facebook.com/docs/games/instant-games)
-[![Poki](https://img.shields.io/badge/Poki-SDK%20v2-0083FF?style=for-the-badge&logo=poki&logoColor=white)](https://sdk.poki.com)
-[![CrazyGames](https://img.shields.io/badge/CrazyGames-SDK%20v3-9333EA?style=for-the-badge)](https://docs.crazygames.com)
-[![Discord Activities](https://img.shields.io/badge/Discord-Activities-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/developers/docs/activities/overview)
-[![Yandex Games](https://img.shields.io/badge/Yandex-Games-FC3F1D?style=for-the-badge&logo=yandex&logoColor=white)](https://yandex.ru/dev/games/doc)
+<p>
+  <img alt="Apple Liquid Glass design" src="https://img.shields.io/badge/design-Liquid%20Glass-111111?style=for-the-badge&logo=apple&logoColor=white" />
+  <img alt="YouTube Playables ready" src="https://img.shields.io/badge/YouTube-Playables%20Ready-FF0000?style=for-the-badge&logo=youtube&logoColor=white" />
+  <img alt="Responsive Canvas" src="https://img.shields.io/badge/rendering-High--DPI%20Canvas-7DD3FC?style=for-the-badge" />
+  <img alt="Platform engine" src="https://img.shields.io/badge/platforms-13%20native%20adapters-A78BFA?style=for-the-badge" />
+</p>
 
-**Match Bubbles · Trigger Combos · Defeat Bosses · Monopolize 13 App Stores & Portals**
+**Match bubbles · build combos · defeat boss cores · ship to the platforms your players use.**
 
-*Zero Playgama or third-party SDK dependencies — 100% pure native platform integrations.*
-
----
-
-[🎮 Launch Game](http://localhost:8080) &nbsp;·&nbsp; [ Platform Universe Hub](http://localhost:8080/platforms) &nbsp;·&nbsp; [🏆 Leaderboards](http://localhost:8080/leaderboard) &nbsp;·&nbsp; [🧪 Test Suite](https://developers.google.com/youtube/gaming/playables/test_suite)
+[Launch locally](#quick-start) · [Platform Universe Hub](#platform-universe) · [YouTube Playables](#youtube-playables) · [Quality checks](#quality-checks)
 
 </div>
 
 ---
 
-##  Apple Design System Architecture
+## The game
 
-Bubble Pop Blast is built with Apple’s **Liquid Glass**, **SF Typography**, and **Fluid Interface Motion** (WWDC 2018 & 2026 design principles translated for the modern web):
+Bubble Pop Blast is a responsive bubble shooter with high-DPI Canvas rendering, rich atmospheric depth, and a glass-inspired interface. It is deliberately lightweight: the premium visual treatment runs in the existing 2D Canvas pipeline, avoiding a decorative Three.js/WebGL dependency that would compromise first-load performance.
 
-<div align="center">
+| Play | Progression | Player comfort |
+| --- | --- | --- |
+| Color matching, bank shots, combos, Bomb, Freeze, Rainbow, and Nova bubbles | Boss-core worlds, daily streaks, weekly ghosts, achievements, stats, and cosmetic unlocks | Color-blind palette, reduced motion, optional haptics, touch controls, and full-screen support |
 
-```mermaid
-graph TD
-    User([Touch / Mouse / Keyboard Input]) -->|Spring Physics 0 latency| CanvasEngine[High-DPI Canvas Bubble Engine]
-    CanvasEngine -->|State Snapshot| UniversalAdapter[Universal Game Adapter Layer]
-    
-    subgraph "13 Native Platform Ecosystems (Zero Playgama)"
-        UniversalAdapter --> YT[YouTube Playables v1]
-        UniversalAdapter --> FB[Facebook Instant Games 7.x]
-        UniversalAdapter --> PK[Poki SDK v2]
-        UniversalAdapter --> CG[CrazyGames SDK v3]
-        UniversalAdapter --> YG[Yandex Games SDK]
-        UniversalAdapter --> GD[GameDistribution SDK]
-        UniversalAdapter --> DC[Discord Activities SDK]
-        UniversalAdapter --> JG[JioGames SDK]
-        UniversalAdapter --> Y8[Y8 Games & ID.net]
-        UniversalAdapter --> LG[Lagged Clean HTML5]
-        UniversalAdapter --> MS[Microsoft Store PWA]
-        UniversalAdapter --> HW[Huawei & Xiaomi Quick Games]
-        UniversalAdapter --> MN[MSN & Reddit Games]
-    end
+### Built to reward skill
 
-    UniversalAdapter -->|Visual UI| LiquidGlass[Apple Liquid Glass UI System]
-    LiquidGlass --> Bento[Apple Bento Grid Hub]
-    LiquidGlass --> Haptics[Taptic Engine & Multi-Modal Sound]
-```
+- **Adaptive pacing** offers a color-match assist after a difficult sequence, while high accuracy makes the palette more demanding.
+- **Combo rewards** give Bomb at 3×, Rainbow at 5×, and Nova on longer chains.
+- **Boss encounters** in Levels 5 and 10 ask the player to match a boss core, not merely chase a score.
+- **Weekly ghosts** keep a local recording of a player’s best pace to race on the next attempt.
+- **Unlockable cosmetics** include Aurora and Solar themes, plus Stardust and Confetti pop effects.
 
-</div>
+## Liquid Glass visual system
 
-### 🎨 Design Highlights
+The interface pairs translucent panels, soft specular highlights, smooth rounded geometry, layered shadows, and restrained motion with an atmospheric Canvas board. The board adds diffuse color fields, sparse depth stars, vignetting, and a glass edge while keeping the aim line and bubbles high-contrast and readable.
 
-- **Liquid Glass Materials**: Real-time `backdrop-filter: blur(24px) saturate(180%)` with specular top edge highlights, multi-layer depth, and adaptive light scattering.
-- **Continuous Squircle Curvature**: Smooth G2 continuous curves across cards, badges, and overlays.
-- **Physical Spring Animations**: Critically damped spring physics (`damping: 1.0`, `response: 0.35s`) for UI, plus momentum flick projection on canvas bubbles.
-- **Apple Bento Grid Hub**: Dedicated `/platforms` route showcasing all 13 platforms with real-time capability tags, SDK inspect consoles, and one-click launch.
-- **Multi-Modal Harmony**: Synchronized audio chimes and Taptic Engine vibration haptics fired on the same frame as visual pops.
+## Platform Universe
 
----
+The universal adapter layer auto-detects supported environments and also accepts a query override such as `?platform=youtube` or `?platform=poki` for development. The Platform Universe Hub is available at `/platforms` and the in-game quick switcher is available from the toolbar.
 
-## 🌐 13 Native Platform Editions
+| Platform family | Native integration |
+| --- | --- |
+| Video, social & activities | YouTube Playables, Facebook Instant Games, Discord Activities |
+| Web portals | Poki, CrazyGames, Yandex Games, GameDistribution, Y8, Lagged |
+| Stores & super apps | Microsoft Store PWA, JioGames, Huawei/Xiaomi Quick Games |
+| Embedded distribution | MSN and Reddit Games |
 
-Every platform edition is built **directly against the vendor's official SDK specification** without Playgama or middleman wrappers:
+Platform adapters expose each ecosystem’s relevant save, leaderboard, ad, and lifecycle capabilities. Monetization is enabled for the adapters and platforms that support it, following the selection made for this project; each provider still requires its own account, review, and runtime configuration before release.
 
-| Platform | Category | SDK Target | Cloud Save | Ads (Mid/Reward) | Leaderboards | Offline PWA |
-|---|---|---|:---:|:---:|:---:|:---:|
-| **YouTube Playables** | Video & TV | `ytgame` v1 | ✅ UTF-16 (<3MB) | ✅ Interstitial + Rewarded | ✅ Highest Score | ❌ |
-| **Facebook Instant Games** | Social & Messenger | `FBInstant` 7.x | ✅ `setDataAsync()` | ✅ Interstitial + Rewarded | ✅ Native Graph | ❌ |
-| **Poki** | Web Portal | `PokiSDK` v2 | 💾 LocalStorage | ✅ `commercialBreak` + `rewardedBreak` | ❌ | ✅ |
-| **CrazyGames** | Web Portal | `CrazyGames.SDK` v3 | 💾 LocalStorage | ✅ Midgame + Rewarded | ❌ | ✅ |
-| **Yandex Games** | Web Portal & Mobile | `YaGames` SDK | ✅ Player Data | ✅ `showFullscreen` + `showRewarded` | ✅ LeaderboardAPI | ❌ |
-| **GameDistribution** | Global Network | `GD_OPTIONS` HTML5 | 💾 LocalStorage | ✅ `gdsdk.showAd()` | ❌ | ✅ |
-| **Discord Activities** | Voice & Chat | Embedded App SDK | 💾 LocalStorage | ❌ | ✅ Rich Presence | ❌ |
-| **JioGames** | Telecom & STB | `JioGames` SDK | ✅ Key-Value | ✅ Interstitial + Rewarded | ✅ Leaderboard | ✅ |
-| **Y8 Games** | Web Arcade | `Y8` / ID.net | 💾 LocalStorage | ✅ `showAd()` | ✅ ID.net Tables | ✅ |
-| **Lagged** | Web Arcade | Clean HTML5 | 💾 LocalStorage | ❌ | ❌ | ✅ |
-| **Microsoft Store** | Desktop Windows 11 | WinRT PWA Manifest | ✅ `localSettings` | ❌ | ❌ | ✅ |
-| **Huawei & Xiaomi** | Mobile Quick App | Quick App `hbs` / `miapp` | ✅ `system.storage` | ❌ | ❌ | ✅ |
-| **MSN & Reddit Games** | iFrame Syndication | `postMessage` protocol | 💾 LocalStorage | ❌ | ✅ PostMessage | ✅ |
-
----
-
-## 🚀 Quick Launch & Platform Switching
-
-### Option 1: Automatic Environment Detection
-The engine automatically detects the runtime environment at load time:
-- Inside YouTube iframe → Activates **YouTube Playables SDK**
-- Inside Facebook Messenger/Feed → Activates **Facebook Instant Games SDK**
-- Inside Poki portal → Activates **Poki SDK**
-- Inside Discord voice chat → Activates **Discord Embedded App SDK**
-- ...and so on.
-
-### Option 2: URL Query Parameter Override
-Simulate or target any platform directly in your browser:
-```bash
-# Test Poki Edition
-http://localhost:8080/?platform=poki
-
-# Test YouTube Playables Edition
-http://localhost:8080/?platform=youtube
-
-# Test Facebook Instant Games Edition
-http://localhost:8080/?platform=facebook
-
-# Test CrazyGames Edition
-http://localhost:8080/?platform=crazygames
-
-# Test Yandex Games Edition
-http://localhost:8080/?platform=yandex
-
-# Test Discord Activities Edition
-http://localhost:8080/?platform=discord
-```
-
-### Option 3: In-Game Apple Platform Switcher
-Click the **** or **🌐** button in the game header to open the interactive **Platform Universe Modal** to switch engines on the fly without refreshing.
-
----
-
-## 🛠️ Local Development & Build Commands
+## Quick start
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Run local development server with strict YouTube Playables CSP headers
 npm run dev
+```
 
-# 3. Build optimized production bundle
+Build the production bundle:
+
+```bash
 npm run build
+```
 
-# 4. Run official YouTube Playables preflight audit
+Run the YouTube Playables bundle preflight:
+
+```bash
 npm run check:playables
 
 # 5. Package standalone distribution bundles for all 13 platforms
 npm run build:platforms
 ```
 
-### Preflight Verification Results
-```text
-── Bubble Pop Blast · YouTube Playables Preflight ──────────────
-  Files            : 26 / 8,000 max
-  Initial bundle   : 0.69 MiB / 15 MiB limit
-  Total bundle     : 0.84 MiB / 250 MiB limit
-  SDK load order   : ✅ OK — SDK before game bundle
-  Invalid names    : ✅ none
-  Oversized files  : ✅ none
-─────────────────────────────────────────────────────────────────
-✅ Preflight PASSED.
-```
+## Controls
 
----
+| Input | Action |
+| --- | --- |
+| Mouse / touch | Aim and shoot |
+| `F` | Toggle fullscreen |
+| `Esc` | Close the open panel |
+|  / 🌐 toolbar icons | Open the platform switcher or Platform Universe Hub |
 
-## 💰 Multi-Platform Monetization Blueprint
+## YouTube Playables
 
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                    Universal Monetization Flow                           │
-├────────────────────────────────┬─────────────────────────────────────────┤
-│  Level Complete / Game Over    │  requestInterstitialAd()                │
-│                                │  • YouTube: ytgame.ads.requestInter...  │
-│                                │  • Poki: PokiSDK.commercialBreak()      │
-│                                │  • CrazyGames: requestAd('midgame')     │
-│                                │  • Yandex: ysdk.adv.showFullscreenAdv() │
-│                                │  • Facebook: getInterstitialAdAsync()   │
-│                                │  • 45s cooldown across all platforms    │
-├────────────────────────────────┼─────────────────────────────────────────┤
-│  Game Over +1 Life Offer       │  requestRewardedAd("extra-life-reward") │
-│                                │  • Grants +1 life on ad completion      │
-│                                │  • Non-blocking with error fallback     │
-└────────────────────────────────┴─────────────────────────────────────────┘
-```
+The YouTube Playables SDK loads before the game bundle. The project implements readiness signaling, audio control, pause/resume, score submission, health logging, locale support, and safe save-state fallback. The layout stays responsive across portrait, landscape, and ultra-wide displays without locking orientation.
 
----
+Before a release, upload the built game to a YouTube Playables Developer Portal development release and run the official [Playables Test Suite](https://developers.google.com/youtube/gaming/playables/test_suite). That suite cannot validate a local Vite server.
 
-## 🛡️ Content Security Policy (CSP)
-
-The Vite development server is configured with YouTube's official CSP header to catch network violations locally:
+## Project map
 
 ```text
-default-src 'none';
-script-src 'report-sample' 'self' 'unsafe-eval' 'unsafe-inline' blob:
-  https://www.youtube.com/game_api/v0
-  https://www.youtube.com/game_api/v0/
-  https://www.youtube.com/game_api/v1
-  https://www.youtube.com/game_api/v1/;
-object-src 'none';
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-img-src 'self' blob: data:;
-media-src 'self' blob:;
-font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com;
-connect-src 'self' blob: data:;
-sandbox allow-pointer-lock allow-same-origin allow-scripts;
-base-uri 'self';
-manifest-src 'self';
-worker-src 'self' blob:
+src/
+  components/  Canvas, HUD, overlays, visual system, and platform switcher
+  pages/       Game, leaderboard, and Platform Universe Hub
+  platforms/   Native adapters and auto-detection layer
+  utils/       Game engine, progression, effects, audio, and Playables SDK
+scripts/       Bundle preflight validation
 ```
 
----
+## Quality checks
 
-## 📂 Project Architecture
+The project exposes `window.render_game_to_text()` for observable gameplay state and `window.advanceTime(ms)` for controlled test-frame advancement. Use `npm run check:playables` before a YouTube submission to verify bundle sizes, safe filenames, and output structure.
 
-```text
-game-verse-creator-guide/
-├── index.html                   # YouTube Playables SDK tag (loaded FIRST)
-├── vite.config.ts               # Vite bundler with enforced Playables CSP
-├── scripts/
-│   └── check-playables.mjs      # Strict bundle preflight validation
-├── src/
-│   ├── App.css                  # Apple Liquid Glass design system & SF typography
-│   ├── App.tsx                  # Router (/ for game, /platforms for universe hub)
-│   ├── types/
-│   │   └── ytgame.d.ts          # 100% complete official YouTube Playables types
-│   ├── platforms/               # 13 Native Platform Adapters (No Playgama)
-│   │   ├── base.ts              # Universal GameAdapter interface & LocalAdapter
-│   │   ├── index.ts             # Auto-detector, catalog & override system
-│   │   ├── youtube.ts           # YouTube Playables adapter
-│   │   ├── facebook.ts          # Facebook Instant Games adapter
-│   │   ├── poki.ts              # Poki SDK v2 adapter
-│   │   ├── crazygames.ts        # CrazyGames SDK v3 adapter
-│   │   ├── yandex.ts            # Yandex Games SDK adapter
-│   │   ├── gamedistribution.ts  # GameDistribution adapter
-│   │   ├── discord.ts           # Discord Activities adapter
-│   │   ├── jiogames.ts          # JioGames SDK adapter
-│   │   ├── y8.ts                # Y8 Games & ID.net adapter
-│   │   ├── lagged.ts            # Lagged HTML5 adapter
-│   │   ├── microsoft.ts         # Microsoft Store PWA adapter
-│   │   ├── huawei.ts            # Huawei & Xiaomi Quick Games adapter
-│   │   └── msn.ts               # MSN & Reddit iFrame postMessage adapter
-│   ├── components/
-│   │   ├── PlatformSwitcherOverlay.tsx # Apple Liquid Glass quick switcher
-│   │   ├── GameCanvas.tsx       # 60fps High-DPI bubble shooting engine
-│   │   └── GameUI.tsx           # Responsive game chrome & stats
-│   ├── pages/
-│   │   ├── Index.tsx            # Main game controller & platform wiring
-│   │   └── PlatformHub.tsx      # Apple Bento Grid 13-Platform Showcase
-│   └── utils/
-│       ├── youtubePlayables.ts  # Defensive YouTube Playables SDK helper
-│       ├── soundManager.ts      # Multi-modal audio synthesizer
-│       └── haptics.ts           # Taptic Engine vibration controller
-```
+## License
 
----
-
-## 🎮 Controls
-
-| Action | Control |
-|---|---|
-| **Aim & Shoot** | Mouse Click / Touch Drag & Release |
-| **Toggle Fullscreen** | `F` key |
-| **Close Overlay** | `Esc` key |
-| **Switch Platform** | Click **** icon in toolbar |
-| **Universe Hub** | Click **🌐** icon in toolbar |
-
----
-
-## 📄 License & Publishing
-
-Built for worldwide publishing across web arcades, social networks, mobile super-apps, and desktop stores. Add an MIT or commercial license before third-party distribution.
+Add an MIT or commercial license before third-party distribution.
 
 <div align="center">
 
-Made with 🫧 and  Apple Design Foundations for [Rahul08319/game-verse-creator-guide](https://github.com/Rahul08319/game-verse-creator-guide)
+Made with 🫧, high-DPI Canvas, and Liquid Glass design foundations.
 
 </div>

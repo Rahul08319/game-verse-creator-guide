@@ -95,12 +95,28 @@ export const drawGame = (
 
 const drawBackground = (ctx: CanvasRenderingContext2D, config: GameConfig) => {
   const bg = getThemeBackground();
+  const time = Date.now() * 0.00014;
   const gradient = ctx.createLinearGradient(0, 0, 0, config.canvasHeight);
   gradient.addColorStop(0, bg.top);
   gradient.addColorStop(0.5, bg.mid);
   gradient.addColorStop(1, bg.bottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
+
+  // Soft, slowly moving colour fields provide depth without a WebGL payload.
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const orbA = ctx.createRadialGradient(70 + Math.sin(time) * 28, 110, 0, 70 + Math.sin(time) * 28, 110, 175);
+  orbA.addColorStop(0, bg.glow1);
+  orbA.addColorStop(1, 'transparent');
+  ctx.fillStyle = orbA;
+  ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
+  const orbB = ctx.createRadialGradient(280 + Math.cos(time * 1.3) * 20, 350, 0, 280 + Math.cos(time * 1.3) * 20, 350, 190);
+  orbB.addColorStop(0, bg.glow2);
+  orbB.addColorStop(1, 'transparent');
+  ctx.fillStyle = orbB;
+  ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
+  ctx.restore();
   
   ctx.strokeStyle = bg.grid;
   ctx.lineWidth = 1;
@@ -111,6 +127,19 @@ const drawBackground = (ctx: CanvasRenderingContext2D, config: GameConfig) => {
   for (let y = 0; y < config.canvasHeight; y += gridSize) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(config.canvasWidth, y); ctx.stroke();
   }
+
+  // A sparse star field gives the board a calm, dimensional surface.
+  ctx.save();
+  for (let i = 0; i < 28; i++) {
+    const x = (i * 73 + 19) % config.canvasWidth;
+    const y = (i * 109 + 47) % config.canvasHeight;
+    const alpha = 0.12 + ((Math.sin(time * 4 + i) + 1) * 0.06);
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, i % 5 === 0 ? 1.1 : 0.55, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
   
   const cornerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 150);
   cornerGlow.addColorStop(0, bg.glow1);
@@ -123,6 +152,12 @@ const drawBackground = (ctx: CanvasRenderingContext2D, config: GameConfig) => {
   cornerGlow2.addColorStop(1, 'transparent');
   ctx.fillStyle = cornerGlow2;
   ctx.fillRect(config.canvasWidth - 150, config.canvasHeight - 150, 150, 150);
+
+  const vignette = ctx.createRadialGradient(config.canvasWidth / 2, config.canvasHeight * 0.45, config.canvasWidth * 0.08, config.canvasWidth / 2, config.canvasHeight * 0.45, config.canvasWidth * 0.72);
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(1, 'rgba(2, 5, 20, 0.28)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
 };
 
 const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boolean) => {
