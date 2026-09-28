@@ -1,6 +1,6 @@
 
 import { GameState, GameConfig, Bubble, Particle, ComboText } from '../types/gameTypes';
-import { wallBouncePositions, getThemeBackground, getParticleStyle } from './gameLogic';
+import { wallBouncePositions, getThemeBackground, getParticleStyle, predictShotTrajectory } from './gameLogic';
 
 const GAME_CONFIG: GameConfig = {
   canvasWidth: 350,
@@ -35,7 +35,7 @@ export const drawGame = (
     drawShooterTrail(ctx, gameState.currentBubble);
     drawBubble(ctx, gameState.currentBubble, false);
     if (!gameState.isGameOver && !gameState.isPaused) {
-      drawAimLine(ctx, gameState.currentBubble.position, aimAngle, config);
+      drawAimLine(ctx, gameState.currentBubble.position, aimAngle, gameState.bubbles);
     }
   }
   
@@ -362,15 +362,15 @@ const drawAimLine = (
   ctx: CanvasRenderingContext2D,
   position: { x: number; y: number },
   angle: number,
-  config: GameConfig
+  bubbles: Bubble[]
 ) => {
-  const lineLength = 120;
-  const endX = position.x + Math.cos(angle) * lineLength;
-  const endY = position.y + Math.sin(angle) * lineLength;
+  const trajectory = predictShotTrajectory(position, angle, bubbles);
+  if (trajectory.length < 2) return;
+  const end = trajectory[trajectory.length - 1];
 
   // Add particles along the aim path
-  const cursorX = endX;
-  const cursorY = endY;
+  const cursorX = end.x;
+  const cursorY = end.y;
   const dx = cursorX - lastAimX;
   const dy = cursorY - lastAimY;
   const moved = Math.sqrt(dx * dx + dy * dy);
@@ -416,17 +416,31 @@ const drawAimLine = (
   ctx.shadowColor = '#00FFFF';
   ctx.shadowBlur = 10;
   
-  const dotCount = 15;
-  for (let i = 0; i < dotCount; i++) {
-    const t = i / dotCount;
-    const x = position.x + (endX - position.x) * t;
-    const y = position.y + (endY - position.y) * t;
-    const radius = 3 - t * 2;
-    ctx.beginPath();
-    ctx.arc(x, y, Math.max(1, radius), 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0, 255, 255, ${1 - t * 0.5})`;
-    ctx.fill();
+  const spacing = 10;
+  let traversedDistance = 0;
+  let distanceToNextDot = spacing;
+  for (let i = 1; i < trajectory.length; i++) {
+    const from = trajectory[i - 1];
+    const to = trajectory[i];
+    const segmentLength = Math.hypot(to.x - from.x, to.y - from.y);
+    while (distanceToNextDot <= segmentLength) {
+      const t = distanceToNextDot / segmentLength;
+      const x = from.x + (to.x - from.x) * t;
+      const y = from.y + (to.y - from.y) * t;
+      const fade = Math.min(1, (traversedDistance + distanceToNextDot) / 120);
+      const radius = 3 - fade * 2;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1, radius), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0, 255, 255, ${1 - fade * 0.5})`;
+      ctx.fill();
+      distanceToNextDot += spacing;
+    }
+    distanceToNextDot -= segmentLength;
+    traversedDistance += segmentLength;
   }
+
+  const endX = end.x;
+  const endY = end.y;
   
   ctx.beginPath();
   ctx.arc(endX, endY, 6, 0, Math.PI * 2);

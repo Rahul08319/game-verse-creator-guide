@@ -556,14 +556,18 @@ export const updateGameState = (gameState: GameState, shootAngle: number): GameS
 // Stores wall bounce positions for particle effects
 export let wallBouncePositions: Position[] = [];
 
-const simulateTrajectory = (start: Position, angle: number, speed: number, obstacles: Bubble[]): { trajectory: Position[], hitBubble: Bubble | null, hitTop: boolean } => {
+export const predictShotTrajectory = (start: Position, angle: number, obstacles: Bubble[]): Position[] =>
+  simulateTrajectory(start, angle, 8, obstacles, false).trajectory;
+
+const simulateTrajectory = (start: Position, angle: number, speed: number, obstacles: Bubble[], trackWallBounces = true): { trajectory: Position[], hitBubble: Bubble | null, hitTop: boolean } => {
   const config = getGameConfig();
   const trajectory: Position[] = [];
   let pos = { ...start };
   const velocity = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
   let hitBubble: Bubble | null = null;
   let hitTop = false;
-  wallBouncePositions = [];
+  const bouncePositions: Position[] = [];
+  if (trackWallBounces) wallBouncePositions = bouncePositions;
 
   for (let i = 0; i < 150; i++) {
     pos.x += velocity.x;
@@ -572,7 +576,7 @@ const simulateTrajectory = (start: Position, angle: number, speed: number, obsta
     if (pos.x <= config.bubbleRadius || pos.x >= config.canvasWidth - config.bubbleRadius) {
       velocity.x *= -1;
       pos.x = Math.max(config.bubbleRadius, Math.min(config.canvasWidth - config.bubbleRadius, pos.x));
-      wallBouncePositions.push({ ...pos });
+      bouncePositions.push({ ...pos });
     }
 
     const collision = obstacles.find(bubble => {
@@ -581,8 +585,16 @@ const simulateTrajectory = (start: Position, angle: number, speed: number, obsta
       return Math.sqrt(dx * dx + dy * dy) <= config.bubbleRadius * 1.9;
     });
 
-    if (collision) { hitBubble = collision; break; }
-    if (pos.y <= config.bubbleRadius + 30) { hitTop = true; break; }
+    if (collision) {
+      hitBubble = collision;
+      trajectory.push({ ...pos });
+      break;
+    }
+    if (pos.y <= config.bubbleRadius + 30) {
+      hitTop = true;
+      trajectory.push({ ...pos });
+      break;
+    }
     trajectory.push({ ...pos });
   }
 
