@@ -69,7 +69,6 @@ graph TD
 - **🫧 Liquid Glass 3D Spheres**: Physically modelled spherical glass bubbles featuring an off-center 3D specular highlight crescent (`ellipse` at top-left), subtle bottom-right bounce reflection, and inner refraction bevel stroke.
 - **💥 Dynamic Expanding Shockwaves**: Real-time canvas shockwave system generating pulsing neon wavefronts with secondary concentric refraction ripples upon bubble matches, cascading combos, and bomb/nova detonations.
 - **🎯 Spinning Precision Aim Reticle**: High-precision aim guidance featuring animated photon pulses streaming along the trajectory and a rotating dashed target reticle with pulsating center node.
-- **🏝️ Dynamic Island Status HUD**: Floating frosted pill displaying live platform SDK status, daily challenge indicators, and instant fullscreen/sound controls.
 - **SF Pro Typography Scale**: Optical sizing with negative tracking on large display headings (`-0.03em`), proportional leading, and clean uppercase micro-labels.
 - **Fluid Spring Physics**: Critically damped spring curves (`damping: 1.0`, `response: 0.35s`) for UI cards, combined with interruptible velocity handoff on interactive bubbles.
 - **Ambient Cursor Spotlight**: Mouse-driven dynamic lighting gradient reflecting off translucent glass layers in real time.

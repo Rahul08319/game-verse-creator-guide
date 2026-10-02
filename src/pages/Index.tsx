@@ -718,23 +718,6 @@ const Index = () => {
       >
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 blur-xl -z-10" />
 
-        {/* Dynamic Island HUD Pill */}
-        <div className="absolute top-2 right-4 z-30 hidden sm:flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur-xl border border-white/15 rounded-full shadow-lg text-[11px] text-white/80">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-medium tracking-tight">
-            {adapter.platform === 'local' ? 'Universal SDK' : adapter.platform.toUpperCase()}
-          </span>
-          <span className="text-white/30">|</span>
-          <button
-            onClick={toggleFullscreen}
-            className="hover:text-cyan-300 transition-colors flex items-center gap-1 font-semibold"
-            title="Toggle Fullscreen (F)"
-          >
-            <span>{isFullscreen ? 'Exit' : 'Full'}</span>
-            <span className="text-[10px] bg-white/10 px-1 rounded">F</span>
-          </button>
-        </div>
-
         {/* Side/Top panel */}
         <div className={`flex flex-col overflow-y-auto ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
           <GameUI gameState={gameState} onRestart={handleRestart} onPause={handlePause} />
