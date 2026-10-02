@@ -7,6 +7,7 @@ interface GameCanvasProps {
   gameState: GameState;
   aimAngle: number;
   screenShake: { x: number; y: number };
+  isFullscreen?: boolean;
   onShoot: (angle: number) => void;
   onAimChange: (angle: number) => void;
   onAimingChange: (isAiming: boolean) => void;
@@ -16,6 +17,7 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
   gameState,
   aimAngle,
   screenShake,
+  isFullscreen,
   onShoot,
   onAimChange,
   onAimingChange
@@ -110,15 +112,22 @@ const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(({
   };
 
   return (
-    <div className="apple-game-frame relative rounded-[1.35rem] p-[1px]">
+    <div className={`apple-game-frame relative rounded-[1.35rem] p-[1px] transition-all duration-300 ${
+      isFullscreen ? 'h-full flex items-center justify-center max-h-[92vh]' : ''
+    }`}>
       <canvas
         ref={canvasRef}
-        className="block rounded-[1.3rem] cursor-crosshair touch-none"
+        className="block rounded-[1.3rem] cursor-crosshair touch-none transition-all duration-300"
         onMouseMove={handleMouseMove}
         onClick={handleClick}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ width: 'min(100%, 560px)', maxHeight: '100%', height: 'auto' }}
+        style={{
+          width: isFullscreen ? 'min(100%, 680px)' : 'min(100%, 560px)',
+          maxHeight: isFullscreen ? 'calc(100dvh - 3.5rem)' : '100%',
+          height: 'auto',
+          aspectRatio: '350 / 500'
+        }}
       />
     </div>
   );

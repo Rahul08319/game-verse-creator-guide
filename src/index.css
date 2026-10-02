@@ -136,4 +136,27 @@ All colors MUST be HSL.
     border-color: rgba(255,255,255,.16);
     box-shadow: 0 28px 90px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255,255,255,.12);
   }
+
+  .apple-specular-glint {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .apple-specular-glint::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.12) 50%, transparent 60%);
+    transform: rotate(25deg);
+    pointer-events: none;
+    animation: specularSheen 6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+}
+
+@keyframes specularSheen {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  25%, 100% { transform: translateX(100%) rotate(25deg); }
 }

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom';
 import GameCanvas from '../components/GameCanvas';
 import GameUI from '../components/GameUI';
+import { triggerShockwave } from '../utils/canvasUtils';
 import type { GameSettings } from '../components/SettingsOverlay';
 import EmojiReactions from '../components/EmojiReactions';
 import PowerUpIndicators from '../components/PowerUpIndicators';
@@ -119,6 +120,7 @@ const Index = () => {
   // Ads state
   const [adRewardPending, setAdRewardPending] = useState(false);
   const [showRewardedAdOffer, setShowRewardedAdOffer] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const mpTimerRef = useRef<ReturnType<typeof setInterval>>();
   const gameStateRef = useRef(gameState);
   const gameSettingsRef = useRef(gameSettings);
@@ -291,6 +293,39 @@ const Index = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        if (gameShellRef.current?.requestFullscreen) {
+          await gameShellRef.current.requestFullscreen();
+        } else if ((gameShellRef.current as any)?.webkitRequestFullscreen) {
+          await (gameShellRef.current as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any)?.webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const active = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      setIsFullscreen(active);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -299,12 +334,11 @@ const Index = () => {
         return;
       }
       if (event.key.toLowerCase() !== 'f') return;
-      if (document.fullscreenElement) void document.exitFullscreen();
-      else void gameShellRef.current?.requestFullscreen?.();
+      void toggleFullscreen();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [toggleFullscreen]);
 
   // Daily streak check-in (runs once on mount)
   useEffect(() => {
@@ -425,18 +459,42 @@ const Index = () => {
         SoundManager.bomb();
         Haptics.explosion();
         triggerScreenShake(12, 400);
+        triggerShockwave(175, 220, '#FF4500', 85);
       }
-      else if (evt === 'freeze') SoundManager.freeze();
-      else if (evt === 'rainbow') SoundManager.rainbow();
-      else if (evt === 'nova') { SoundManager.bomb(); Haptics.explosion(); triggerScreenShake(14, 450); }
-      else if (evt === 'boss-defeated') { SoundManager.levelUp(); Haptics.levelUp(); triggerScreenShake(16, 550); }
-      else if (evt === 'pop') { SoundManager.multiPop(3); Haptics.pop(); }
+      else if (evt === 'freeze') {
+        SoundManager.freeze();
+        triggerShockwave(175, 220, '#00FFFF', 75);
+      }
+      else if (evt === 'rainbow') {
+        SoundManager.rainbow();
+        triggerShockwave(175, 220, '#FF0080', 70);
+      }
+      else if (evt === 'nova') {
+        SoundManager.bomb();
+        Haptics.explosion();
+        triggerScreenShake(14, 450);
+        triggerShockwave(175, 220, '#F7C948', 110);
+      }
+      else if (evt === 'boss-defeated') {
+        SoundManager.levelUp();
+        Haptics.levelUp();
+        triggerScreenShake(16, 550);
+        triggerShockwave(175, 200, '#FFD166', 125);
+      }
+      else if (evt === 'pop') {
+        SoundManager.multiPop(3);
+        Haptics.pop();
+        if (gameState.currentBubble) {
+          triggerShockwave(gameState.currentBubble.position.x, gameState.currentBubble.position.y, gameState.currentBubble.color, 45);
+        }
+      }
       else if (evt.startsWith('combo-')) {
         const comboLevel = parseInt(evt.split('-')[1]);
         SoundManager.combo(comboLevel);
         SoundManager.multiPop(comboLevel + 2);
         Haptics.combo(comboLevel);
         if (comboLevel >= 3) triggerScreenShake(4, 200);
+        triggerShockwave(175, 200, '#FFFF00', 50 + comboLevel * 12);
       } else if (evt === 'attach') SoundManager.attach();
     }
 
@@ -625,7 +683,12 @@ const Index = () => {
 
   return (
     <Suspense fallback={null}>
-    <div ref={gameShellRef} className="min-h-[100dvh] bg-[#0a0a1a] flex items-center justify-center p-2 overflow-hidden">
+    <div
+      ref={gameShellRef}
+      className={`min-h-[100dvh] bg-[#0a0a1a] flex items-center justify-center overflow-hidden transition-all duration-300 ${
+        isFullscreen ? 'p-0 w-screen h-[100dvh]' : 'p-2'
+      }`}
+    >
       {/* Achievement toast */}
       {achievementQueue.length > 0 && (
         <AchievementToast
@@ -643,12 +706,34 @@ const Index = () => {
       </div>
 
       {/* Main game container */}
-      <div className={`apple-glass-surface relative backdrop-blur-xl rounded-3xl shadow-2xl border overflow-hidden w-full max-w-[1100px] h-[calc(100dvh-1rem)] max-h-[720px] ${
-        isLandscape
-          ? 'flex flex-row p-3 gap-3'
-          : 'flex flex-col p-3'
-      }`}>
+      <div
+        className={`apple-glass-surface relative backdrop-blur-xl shadow-2xl transition-all duration-300 overflow-hidden ${
+          isFullscreen
+            ? 'w-screen h-[100dvh] max-w-none max-h-none rounded-none border-0 p-2 sm:p-4 m-0 flex ' +
+              (isLandscape ? 'flex-row gap-4' : 'flex-col gap-2')
+            : `w-full max-w-[1100px] h-[calc(100dvh-1rem)] max-h-[720px] rounded-3xl border ${
+                isLandscape ? 'flex flex-row p-3 gap-3' : 'flex flex-col p-3'
+              }`
+        }`}
+      >
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 blur-xl -z-10" />
+
+        {/* Dynamic Island HUD Pill */}
+        <div className="absolute top-2 right-4 z-30 hidden sm:flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur-xl border border-white/15 rounded-full shadow-lg text-[11px] text-white/80">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-medium tracking-tight">
+            {adapter.platform === 'local' ? 'Universal SDK' : adapter.platform.toUpperCase()}
+          </span>
+          <span className="text-white/30">|</span>
+          <button
+            onClick={toggleFullscreen}
+            className="hover:text-cyan-300 transition-colors flex items-center gap-1 font-semibold"
+            title="Toggle Fullscreen (F)"
+          >
+            <span>{isFullscreen ? 'Exit' : 'Full'}</span>
+            <span className="text-[10px] bg-white/10 px-1 rounded">F</span>
+          </button>
+        </div>
 
         {/* Side/Top panel */}
         <div className={`flex flex-col overflow-y-auto ${isLandscape ? 'w-52 shrink-0 justify-between' : 'shrink-0'}`}>
@@ -775,6 +860,25 @@ const Index = () => {
               >
                 ⚙️
               </button>
+              <button
+                onClick={toggleFullscreen}
+                className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs transition-all border ${
+                  isFullscreen
+                    ? 'bg-cyan-500/30 border-cyan-400/50 text-cyan-300 shadow-sm shadow-cyan-500/20'
+                    : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                }`}
+                title={isFullscreen ? 'Exit Fullscreen (F)' : 'Enter Fullscreen (F)'}
+                aria-label="Toggle Fullscreen"
+              >
+                {isFullscreen ? '✕' : '⛶'}
+              </button>
+              <button
+                onClick={() => navigate('/platforms')}
+                className="w-7 h-7 flex items-center justify-center bg-pink-500/20 text-white rounded-lg text-xs hover:bg-pink-500/30 transition-all border border-pink-500/20"
+                title="Platform Universe Hub"
+              >
+                🌐
+              </button>
             </div>
           </div>
         </div>
@@ -786,6 +890,7 @@ const Index = () => {
             gameState={gameState}
             aimAngle={aimAngle}
             screenShake={screenShake}
+            isFullscreen={isFullscreen}
             onShoot={handleShoot}
             onAimChange={setAimAngle}
             onAimingChange={() => {}}

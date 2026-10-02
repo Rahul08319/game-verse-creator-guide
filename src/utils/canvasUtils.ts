@@ -14,6 +14,33 @@ const GAME_CONFIG: GameConfig = {
 
 export const getCanvasConfig = (): GameConfig => GAME_CONFIG;
 
+interface Shockwave {
+  x: number;
+  y: number;
+  radius: number;
+  maxRadius: number;
+  color: string;
+  alpha: number;
+  lineWidth: number;
+}
+
+const activeShockwaves: Shockwave[] = [];
+
+/**
+ * Triggers an expanding Cupertino neon shockwave ring at specified coordinates.
+ */
+export const triggerShockwave = (x: number, y: number, color: string, maxRadius = 60) => {
+  activeShockwaves.push({
+    x,
+    y,
+    radius: 4,
+    maxRadius,
+    color,
+    alpha: 0.95,
+    lineWidth: 3.5,
+  });
+};
+
 export const drawGame = (
   ctx: CanvasRenderingContext2D,
   gameState: GameState,
@@ -75,6 +102,36 @@ export const drawGame = (
     ctx.restore();
   }
   
+  if (activeShockwaves.length > 0) {
+    for (let i = activeShockwaves.length - 1; i >= 0; i--) {
+      const sw = activeShockwaves[i];
+      sw.radius += 3.8;
+      sw.alpha -= 0.045;
+      sw.lineWidth = Math.max(0.6, sw.lineWidth * 0.95);
+      if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) {
+        activeShockwaves.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, sw.alpha);
+      ctx.strokeStyle = sw.color;
+      ctx.lineWidth = sw.lineWidth;
+      ctx.shadowColor = sw.color;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      if (sw.radius > 14) {
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius * 0.72, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, sw.alpha * 0.5)})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
   if (wallBouncePositions && wallBouncePositions.length > 0) {
     wallBouncePositions.forEach(pos => drawWallBounceSparks(ctx, pos));
   }
@@ -266,19 +323,37 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, isFrozen: boo
     ctx.fill();
   }
   
-  const highlightGradient = ctx.createRadialGradient(x - radius * 0.4, y - radius * 0.4, 0, x, y, radius);
-  highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
-  highlightGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.2)');
-  highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  // ── Cupertino Liquid Glass 3D Specular Highlight ──────────────
+  // Top-left glossy crescent highlight
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(x, y, radius * 0.9, 0, Math.PI * 2);
-  ctx.fillStyle = highlightGradient;
+  ctx.ellipse(x - radius * 0.34, y - radius * 0.36, radius * 0.46, radius * 0.22, -Math.PI / 4, 0, Math.PI * 2);
+  const specGrad = ctx.createLinearGradient(x - radius * 0.5, y - radius * 0.5, x, y);
+  specGrad.addColorStop(0, 'rgba(255, 255, 255, 0.88)');
+  specGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.35)');
+  specGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = specGrad;
   ctx.fill();
-  
+
+  // Bottom-right subtle bounce reflection
+  ctx.beginPath();
+  ctx.ellipse(x + radius * 0.28, y + radius * 0.32, radius * 0.3, radius * 0.12, -Math.PI / 4, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+  ctx.fill();
+
+  // Inner bevel edge stroke
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.94, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  // Outer border with smooth sheen
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = bubble.powerUp ? '#FFFFFF' : bubble.color;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = bubble.powerUp ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)';
+  ctx.lineWidth = bubble.powerUp ? 2.5 : 1.5;
   ctx.stroke();
   
   ctx.restore();
@@ -442,17 +517,39 @@ const drawAimLine = (
   const endX = end.x;
   const endY = end.y;
   
+  // Cupertino Precision Reticle
+  const rot = (Date.now() * 0.0035) % (Math.PI * 2);
+  ctx.save();
+  ctx.translate(endX, endY);
+  
+  // Rotating dashed outer ring
+  ctx.rotate(rot);
+  ctx.strokeStyle = 'rgba(0, 255, 255, 0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 4]);
   ctx.beginPath();
-  ctx.arc(endX, endY, 6, 0, Math.PI * 2);
-  ctx.strokeStyle = '#00FFFF';
-  ctx.lineWidth = 2;
+  ctx.arc(0, 0, 10, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // Center pulsing target dot
   ctx.beginPath();
-  ctx.moveTo(endX - 10, endY);
-  ctx.lineTo(endX + 10, endY);
-  ctx.moveTo(endX, endY - 10);
-  ctx.lineTo(endX, endY + 10);
+  ctx.arc(0, 0, 3 + Math.sin(Date.now() * 0.008) * 0.8, 0, Math.PI * 2);
+  ctx.fillStyle = '#00FFFF';
+  ctx.shadowColor = '#00FFFF';
+  ctx.shadowBlur = 8;
+  ctx.fill();
+  
+  // Precision crosshair lines
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-14, 0); ctx.lineTo(-5, 0);
+  ctx.moveTo(5, 0); ctx.lineTo(14, 0);
+  ctx.moveTo(0, -14); ctx.lineTo(0, -5);
+  ctx.moveTo(0, 5); ctx.lineTo(0, 14);
   ctx.stroke();
+  ctx.restore();
   ctx.restore();
 };
 
